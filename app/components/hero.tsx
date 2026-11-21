@@ -9,7 +9,7 @@ export function Hero() {
           The Growth Jar
         </span>
         <a
-          href="#preorder"
+          href="/checkout"
           className="rounded-full border border-sage-dark px-4 py-2 sm:px-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-dark transition-colors hover:bg-sage-dark hover:text-parchment"
         >
           Pre-order
@@ -43,6 +43,7 @@ export function Hero() {
           width={3882}
           height={4637}
           priority
+          loading="eager"
           sizes="(min-width: 768px) 50vw, 100vw"
           className="h-auto w-full rounded-2xl shadow-xl shadow-sage/20"
         />

@@ -1,5 +1,4 @@
-// Replace with the real checkout/pre-order URL when available.
-export const PREORDER_URL = "#preorder";
+export const PREORDER_URL = "/checkout";
 
 export function PreorderButton({
   children = "Pre-order your Growth Jar Experience",
