@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where python py pdftotext 2>/dev/null; python --version 2>/dev/null; py --version 2>/dev/null)",
+      "Bash(pdftotext -layout \"Materials/THE GROWTH JAR SALES PAGE EDIT.pdf\" Materials/copy.txt && wc -l Materials/copy.txt)",
+      "Bash(python -c \"\nimport struct\nfor f in ['Materials/sewy jay design 2_091110.png','Materials/sewy jay design 3_091037.png','Materials/sewy jay design BOOK DESIGN_124507.png']:\n    with open\\(f,'rb'\\) as fh:\n        d=fh.read\\(33\\)\n    w,h=struct.unpack\\('>II',d[16:24]\\)\n    print\\(f,w,h\\)\n\" && cat next.config.ts)",
+      "Bash(cp \"Materials/sewy jay design 2_091110.png\" public/journal.png && cp \"Materials/sewy jay design 3_091037.png\" public/jar.png && cp \"Materials/sewy jay design BOOK DESIGN_124507.png\" public/growth-jar-experience.png && rm public/next.svg public/vercel.svg public/file.svg public/globe.svg public/window.svg && ls public)",
+      "Bash(npm run:*)",
+      "Bash(ls \"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" \"/c/Program Files/Google/Chrome/Application/chrome.exe\" 2>/dev/null)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)",
+      "PowerShell",
+      "Bash(rm -rf .shots)"
+    ]
+  }
+}
