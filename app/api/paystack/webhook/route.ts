@@ -1,5 +1,11 @@
-import { getOrderByReference, markFailed, markPaid } from "@/lib/db";
+import {
+  getOrderByReference,
+  markFailed,
+  markPaid,
+  type Order,
+} from "@/lib/db";
 import { validWebhookSignature, verifyTransaction } from "@/lib/paystack";
+import { sendAdminNewOrderAlert, sendOrderConfirmation } from "@/lib/email";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -30,7 +36,11 @@ export async function POST(request: Request) {
     verified.amount === order.total_kobo &&
     verified.currency === order.currency
   ) {
-    markPaid(order.id);
+    if (markPaid(order.id)) {
+      const paidOrder = getOrderByReference(reference) as Order;
+      await sendOrderConfirmation(paidOrder);
+      await sendAdminNewOrderAlert(paidOrder);
+    }
   } else if (verified.status === "failed") {
     markFailed(order.id);
   }

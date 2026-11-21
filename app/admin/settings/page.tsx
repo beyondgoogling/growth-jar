@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getSettings } from "@/lib/db";
-import { AdminNav } from "../admin-nav";
+import { AdminShell, Card } from "../ui";
 import { SettingsForm } from "./settings-form";
 
 export default function SettingsPage() {
@@ -13,18 +13,16 @@ export default function SettingsPage() {
 }
 
 async function Settings() {
-  await requireAdmin();
+  const admin = await requirePermission("settings.prices");
   const s = getSettings();
   return (
-    <>
-      <AdminNav active="settings" />
-      <main className="mx-auto max-w-xl px-6 py-10">
-        <h1 className="font-serif text-3xl font-medium text-sage-dark">
-          Prices & shipping
-        </h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          Changes go live on the checkout page immediately. Amounts in Naira.
-        </p>
+    <AdminShell
+      admin={admin}
+      active="prices"
+      title="Prices & shipping"
+      subtitle="Changes go live on the checkout page immediately. Amounts in Naira."
+    >
+      <Card className="max-w-xl p-8">
         <SettingsForm
           initial={{
             journalPrice: s.journalPriceKobo / 100,
@@ -32,7 +30,7 @@ async function Settings() {
             shippingFee: s.shippingFeeKobo / 100,
           }}
         />
-      </main>
-    </>
+      </Card>
+    </AdminShell>
   );
 }

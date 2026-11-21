@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getOrderByReference, markFailed, markPaid } from "@/lib/db";
 import { paystackConfigured, verifyTransaction } from "@/lib/paystack";
+import { sendAdminNewOrderAlert, sendOrderConfirmation } from "@/lib/email";
 import { naira, PACKAGE_LABELS } from "@/lib/format";
 
 export const metadata = {
@@ -54,8 +55,13 @@ async function VerifyResult({
       verified.amount === order.total_kobo &&
       verified.currency === order.currency
     ) {
-      markPaid(order.id);
-      order.payment_status = "paid";
+      if (markPaid(order.id)) {
+        order.payment_status = "paid";
+        await sendOrderConfirmation(order);
+        await sendAdminNewOrderAlert(order);
+      } else {
+        order.payment_status = "paid";
+      }
     } else if (verified?.status === "failed") {
       markFailed(order.id);
       order.payment_status = "failed";

@@ -1,0 +1,159 @@
+import "server-only";
+import nodemailer from "nodemailer";
+import { getDb, logEvent, type Order } from "./db";
+import { naira, PACKAGE_LABELS } from "./format";
+
+export function emailConfigured(): boolean {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+function transporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: Number(process.env.SMTP_PORT ?? 587) === 465,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+}
+
+function fromAddress(): string {
+  return process.env.SMTP_FROM || process.env.SMTP_USER || "";
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function layout(title: string, bodyHtml: string): string {
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f6f2ea;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f2ea;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fbf9f4;border:1px solid #d8d2c2;border-radius:16px;overflow:hidden;">
+        <tr><td style="background:#414d38;padding:24px 32px;">
+          <span style="color:#fbf9f4;font-size:18px;letter-spacing:3px;text-transform:uppercase;">The Growth Jar</span>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <h1 style="margin:0 0 16px;color:#414d38;font-size:26px;font-weight:normal;">${title}</h1>
+          <div style="color:#3a3f33;font-size:15px;line-height:1.7;font-family:Arial,Helvetica,sans-serif;">${bodyHtml}</div>
+        </td></tr>
+        <tr><td style="padding:20px 32px;background:#efe9dd;color:#6b7060;font-size:12px;font-family:Arial,Helvetica,sans-serif;">
+          The Growth Jar Experience · Don't just count your blessings. Document your becoming.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
+function orderTable(order: Order): string {
+  const row = (k: string, v: string) =>
+    `<tr><td style="padding:6px 0;color:#6b7060;">${k}</td><td style="padding:6px 0;text-align:right;font-weight:bold;">${v}</td></tr>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;background:#f6f2ea;border-radius:12px;padding:8px 16px;">
+    ${row("Order reference", escapeHtml(order.reference))}
+    ${row("Package", `${PACKAGE_LABELS[order.package]} × ${order.quantity}`)}
+    ${row("Shipping", naira(order.shipping_kobo))}
+    ${row("Total", naira(order.total_kobo))}
+  </table>`;
+}
+
+async function send(to: string, subject: string, html: string) {
+  await transporter().sendMail({ from: fromAddress(), to, subject, html });
+}
+
+export async function sendOrderConfirmation(order: Order): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  try {
+    await send(
+      order.email,
+      `Your Growth Jar pre-order is confirmed (${order.reference})`,
+      layout(
+        "Thank you — your pre-order is confirmed!",
+        `<p>Hi ${escapeHtml(order.customer_name)},</p>
+         <p>We've received your payment. Your Growth Jar Experience is reserved and will ship to you after the official launch on <strong>11 December 2026</strong>.</p>
+         ${orderTable(order)}
+         <p><strong>Shipping to:</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</p>
+         <p>We'll email you again the moment your order ships. Keep your order reference safe.</p>
+         <p style="color:#a8842c;font-style:italic;">Don't just count your blessings. Document your becoming.</p>`
+      )
+    );
+    logEvent(order.id, `Confirmation email sent to ${order.email}`);
+    return true;
+  } catch {
+    logEvent(order.id, "Confirmation email failed to send");
+    return false;
+  }
+}
+
+export async function sendAdminNewOrderAlert(order: Order): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  const row = getDb()
+    .prepare("SELECT value FROM settings WHERE key = 'notify_email'")
+    .get() as { value: string } | undefined;
+  const to = row?.value;
+  if (!to) return false;
+  try {
+    await send(
+      to,
+      `New paid order: ${order.reference} — ${naira(order.total_kobo)}`,
+      layout(
+        "New paid order",
+        `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) just paid for:</p>
+         ${orderTable(order)}
+         <p><strong>Ship to:</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
+         <p>Open the admin dashboard to manage this order.</p>`
+      )
+    );
+    logEvent(order.id, `Admin alert sent to ${to}`);
+    return true;
+  } catch {
+    logEvent(order.id, "Admin alert email failed to send");
+    return false;
+  }
+}
+
+export async function sendShippedNotification(order: Order): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  try {
+    await send(
+      order.email,
+      `Your Growth Jar is on its way! (${order.reference})`,
+      layout(
+        "Your Growth Jar has shipped!",
+        `<p>Hi ${escapeHtml(order.customer_name)},</p>
+         <p>Good news — your order is on its way to:</p>
+         <p><strong>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</strong></p>
+         ${orderTable(order)}
+         <p>Soon you'll be holding 52 weeks of becoming in your hands. We can't wait for you to begin.</p>
+         <p style="color:#a8842c;font-style:italic;">Write it. Tear it. Save it. One week at a time.</p>`
+      )
+    );
+    logEvent(order.id, `Shipped notification emailed to ${order.email}`);
+    return true;
+  } catch {
+    logEvent(order.id, "Shipped notification email failed to send");
+    return false;
+  }
+}
+
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+  if (!emailConfigured())
+    return { ok: false, error: "SMTP is not configured yet. Add the SMTP values to .env.local first." };
+  try {
+    await send(
+      to,
+      "Growth Jar email test",
+      layout(
+        "Emails are working",
+        "<p>This is a test email from your Growth Jar admin dashboard. If you received it, order notifications will reach your customers.</p>"
+      )
+    );
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Send failed." };
+  }
+}

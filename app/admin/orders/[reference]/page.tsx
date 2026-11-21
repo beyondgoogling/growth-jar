@@ -2,10 +2,13 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import { can } from "@/lib/admins";
 import { getDb, getOrderByReference } from "@/lib/db";
 import { formatDate, naira, PACKAGE_LABELS } from "@/lib/format";
 import { saveNotesAction, updateFulfillmentAction } from "../../actions";
-import { AdminNav, PaymentBadge } from "../../admin-nav";
+import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "../../ui";
+import { btnPrimary, inputClass, labelClass } from "../../styles";
+import { ShippedEmailButton } from "./shipped-button";
 
 export default function OrderPage({
   params,
@@ -24,7 +27,7 @@ async function OrderDetail({
 }: {
   params: Promise<{ reference: string }>;
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { reference } = await params;
   const order = getOrderByReference(reference);
   if (!order) notFound();
@@ -33,32 +36,42 @@ async function OrderDetail({
     .prepare("SELECT * FROM order_events WHERE order_id = ? ORDER BY id DESC")
     .all(order.id) as { id: number; at: string; event: string }[];
 
-  return (
-    <>
-      <AdminNav active="orders" />
-      <main className="mx-auto max-w-4xl px-6 py-10">
-        <Link href="/admin" className="text-xs uppercase tracking-[0.2em] text-ink-soft hover:text-sage-dark">
-          ← All orders
-        </Link>
-        <div className="mt-4 flex flex-wrap items-center gap-4">
-          <h1 className="font-mono text-2xl font-semibold text-sage-dark">
-            {order.reference}
-          </h1>
-          <PaymentBadge status={order.payment_status} />
-          <span className="text-sm text-ink-soft">{formatDate(order.created_at)}</span>
-        </div>
+  const canFulfill = can(admin.role, "orders.fulfill");
+  const canNote = can(admin.role, "orders.notes");
+  const canEmail = can(admin.role, "email.send");
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <section className="rounded-2xl border border-sage/30 bg-parchment p-6">
-            <h2 className="font-serif text-xl font-semibold text-sage-dark">Customer</h2>
-            <dl className="mt-3 space-y-1 text-sm">
-              <Row k="Name" v={order.customer_name} />
-              <Row k="Email" v={order.email} />
-              <Row k="Phone" v={order.phone} />
-            </dl>
-            <h2 className="mt-6 font-serif text-xl font-semibold text-sage-dark">
+  return (
+    <AdminShell
+      admin={admin}
+      active="orders"
+      title={order.reference}
+      subtitle={`Placed ${formatDate(order.created_at)}`}
+      actions={
+        <div className="flex items-center gap-2">
+          <PaymentBadge status={order.payment_status} />
+          <FulfillmentBadge status={order.fulfillment_status} />
+        </div>
+      }
+    >
+      <Link
+        href="/admin/orders"
+        className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-soft hover:text-gold"
+      >
+        ← All orders
+      </Link>
+
+      <div className="mt-5 grid gap-6 lg:grid-cols-2">
+        <Card className="p-7">
+          <h2 className="font-serif text-xl font-semibold text-sage-dark">Customer</h2>
+          <dl className="mt-4 space-y-2.5 text-sm">
+            <Row k="Name" v={order.customer_name} />
+            <Row k="Email" v={order.email} />
+            <Row k="Phone" v={order.phone} />
+          </dl>
+          <div className="mt-6 rounded-xl bg-cream p-5">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-deep">
               Ship to
-            </h2>
+            </h3>
             <p className="mt-2 text-sm leading-relaxed">
               {order.address_line}
               <br />
@@ -66,24 +79,40 @@ async function OrderDetail({
               <br />
               {order.country}
             </p>
-          </section>
+          </div>
+          {canEmail && (
+            <div className="mt-6 border-t border-sage/15 pt-5">
+              <ShippedEmailButton
+                reference={order.reference}
+                eligible={
+                  order.payment_status === "paid" &&
+                  (order.fulfillment_status === "shipped" ||
+                    order.fulfillment_status === "delivered")
+                }
+              />
+            </div>
+          )}
+        </Card>
 
-          <section className="rounded-2xl border border-sage/30 bg-parchment p-6">
-            <h2 className="font-serif text-xl font-semibold text-sage-dark">Order</h2>
-            <dl className="mt-3 space-y-1 text-sm">
-              <Row k="Package" v={`${PACKAGE_LABELS[order.package]} × ${order.quantity}`} />
-              <Row k="Unit price" v={naira(order.unit_price_kobo)} />
-              <Row k="Shipping" v={naira(order.shipping_kobo)} />
-              <Row k="Total" v={naira(order.total_kobo)} />
-              {order.paid_at && <Row k="Paid at" v={formatDate(order.paid_at)} />}
-            </dl>
+        <Card className="p-7">
+          <h2 className="font-serif text-xl font-semibold text-sage-dark">Order</h2>
+          <dl className="mt-4 space-y-2.5 text-sm">
+            <Row k="Package" v={`${PACKAGE_LABELS[order.package]} × ${order.quantity}`} />
+            <Row k="Unit price" v={naira(order.unit_price_kobo)} />
+            <Row k="Shipping" v={naira(order.shipping_kobo)} />
+            <div className="flex justify-between gap-4 border-t border-sage/15 pt-3">
+              <dt className="font-semibold">Total</dt>
+              <dd className="font-serif text-xl font-semibold text-gold">
+                {naira(order.total_kobo)}
+              </dd>
+            </div>
+            {order.paid_at && <Row k="Paid at" v={formatDate(order.paid_at)} />}
+          </dl>
 
-            <form action={updateFulfillmentAction} className="mt-6">
+          {canFulfill ? (
+            <form action={updateFulfillmentAction} className="mt-7">
               <input type="hidden" name="reference" value={order.reference} />
-              <label
-                htmlFor="status"
-                className="mb-1 block text-xs font-semibold uppercase tracking-[0.15em] text-sage-deep"
-              >
+              <label htmlFor="status" className={labelClass}>
                 Fulfillment status
               </label>
               <div className="flex gap-2">
@@ -92,60 +121,72 @@ async function OrderDetail({
                   name="status"
                   key={order.fulfillment_status}
                   defaultValue={order.fulfillment_status}
-                  className="w-full rounded-lg border border-sage/40 bg-cream px-3 py-2 text-sm capitalize"
+                  className={`${inputClass} capitalize`}
                 >
                   <option value="unfulfilled">Unfulfilled</option>
                   <option value="shipped">Shipped</option>
                   <option value="delivered">Delivered</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
-                <button
-                  type="submit"
-                  className="rounded-full bg-sage-dark px-5 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-parchment hover:bg-gold"
-                >
+                <button type="submit" className={btnPrimary}>
                   Update
                 </button>
               </div>
             </form>
-          </section>
-        </div>
+          ) : (
+            <p className="mt-7 text-sm text-ink-soft">
+              Your role cannot change fulfillment status.
+            </p>
+          )}
+        </Card>
+      </div>
 
-        <section className="mt-6 rounded-2xl border border-sage/30 bg-parchment p-6">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card className="p-7">
           <h2 className="font-serif text-xl font-semibold text-sage-dark">
             Internal notes
           </h2>
-          <form action={saveNotesAction} className="mt-3">
-            <input type="hidden" name="reference" value={order.reference} />
-            <textarea
-              name="notes"
-              defaultValue={order.notes}
-              rows={4}
-              maxLength={5000}
-              placeholder="e.g. customer asked for gift wrapping, courier tracking number…"
-              className="w-full rounded-lg border border-sage/40 bg-cream px-4 py-3 text-sm outline-none focus:border-sage-deep"
-            />
-            <button
-              type="submit"
-              className="mt-3 rounded-full bg-sage-dark px-5 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-parchment hover:bg-gold"
-            >
-              Save notes
-            </button>
-          </form>
-        </section>
+          {canNote ? (
+            <form action={saveNotesAction} className="mt-4">
+              <input type="hidden" name="reference" value={order.reference} />
+              <textarea
+                name="notes"
+                defaultValue={order.notes}
+                rows={5}
+                maxLength={5000}
+                placeholder="e.g. gift wrapping requested, courier tracking number…"
+                className={inputClass}
+              />
+              <button type="submit" className={`${btnPrimary} mt-4`}>
+                Save notes
+              </button>
+            </form>
+          ) : (
+            <p className="mt-4 whitespace-pre-wrap text-sm text-ink-soft">
+              {order.notes || "No notes."}
+            </p>
+          )}
+        </Card>
 
-        <section className="mt-6 rounded-2xl border border-sage/30 bg-parchment p-6">
+        <Card className="p-7">
           <h2 className="font-serif text-xl font-semibold text-sage-dark">History</h2>
-          <ul className="mt-3 space-y-2 text-sm">
-            {events.map((e) => (
-              <li key={e.id} className="flex flex-wrap gap-x-3">
-                <span className="whitespace-nowrap text-ink-soft">{formatDate(e.at)}</span>
-                <span>{e.event}</span>
+          <ol className="mt-4 space-y-0">
+            {events.map((e, i) => (
+              <li key={e.id} className="relative flex gap-4 pb-5 last:pb-0">
+                {i < events.length - 1 && (
+                  <span className="absolute left-[5px] top-4 h-full w-px bg-sage/25" />
+                )}
+                <span className="mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full border-2 border-gold bg-parchment" />
+                <div className="min-w-0">
+                  <p className="text-sm">{e.event}</p>
+                  <p className="text-xs text-ink-soft">{formatDate(e.at)}</p>
+                </div>
               </li>
             ))}
-          </ul>
-        </section>
-      </main>
-    </>
+          </ol>
+        </Card>
+      </div>
+    </AdminShell>
   );
 }
 

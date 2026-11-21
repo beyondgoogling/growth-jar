@@ -1,3 +1,4 @@
+import "server-only";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -44,11 +45,27 @@ function createDb(): DatabaseSync {
       at TEXT NOT NULL DEFAULT (datetime('now')),
       event TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS admins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('owner','manager','staff')),
+      password_hash TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS admin_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      at TEXT NOT NULL DEFAULT (datetime('now')),
+      actor TEXT NOT NULL,
+      event TEXT NOT NULL
+    );
   `);
   const seed = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
   seed.run("journal_price_kobo", "1500000");
   seed.run("complete_price_kobo", "2500000");
   seed.run("shipping_fee_kobo", "300000");
+  seed.run("notify_email", "");
   return db;
 }
 
@@ -118,14 +135,18 @@ export function getOrderByReference(reference: string): Order | undefined {
     .get(reference) as Order | undefined;
 }
 
-export function markPaid(orderId: number) {
+export function markPaid(orderId: number): boolean {
   const db = getDb();
   const res = db
     .prepare(
       "UPDATE orders SET payment_status = 'paid', paid_at = datetime('now') WHERE id = ? AND payment_status != 'paid'"
     )
     .run(orderId);
-  if (Number(res.changes) > 0) logEvent(orderId, "Payment confirmed via Paystack");
+  if (Number(res.changes) > 0) {
+    logEvent(orderId, "Payment confirmed via Paystack");
+    return true;
+  }
+  return false;
 }
 
 export function markFailed(orderId: number) {

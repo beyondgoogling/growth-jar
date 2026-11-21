@@ -3,14 +3,23 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { createSession, destroySession, requirePermission } from "@/lib/auth";
 import {
-  createSession,
-  destroySession,
-  passwordMatches,
-  requireAdmin,
-} from "@/lib/auth";
+  activeOwnerCount,
+  createAdmin,
+  getAdminByEmail,
+  hashPassword,
+  verifyPassword,
+  type Role,
+} from "@/lib/admins";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { getDb, getOrderByReference, logEvent, updateSettings } from "@/lib/db";
+import {
+  getDb,
+  getOrderByReference,
+  logEvent,
+  updateSettings,
+} from "@/lib/db";
+import { sendShippedNotification, sendTestEmail } from "@/lib/email";
 
 export async function loginAction(
   _prev: { error: string } | null,
@@ -20,11 +29,18 @@ export async function loginAction(
   if (!rateLimit(`login:${ip}`, 5, 15 * 60_000))
     return { error: "Too many attempts. Try again in 15 minutes." };
 
-  const password = formData.get("password");
-  if (typeof password !== "string" || !passwordMatches(password))
-    return { error: "Incorrect password." };
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const admin = email ? getAdminByEmail(email) : undefined;
+  // Always run a hash verification so timing doesn't reveal whether the email exists.
+  const hash =
+    admin?.password_hash ??
+    "00000000000000000000000000000000:00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+  const valid = verifyPassword(password, hash);
+  if (!admin || !admin.active || !valid)
+    return { error: "Incorrect email or password." };
 
-  await createSession();
+  await createSession(admin.id);
   redirect("/admin");
 }
 
@@ -36,7 +52,7 @@ export async function logoutAction() {
 const FULFILLMENT_STATUSES = ["unfulfilled", "shipped", "delivered", "cancelled"];
 
 export async function updateFulfillmentAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requirePermission("orders.fulfill");
   const reference = String(formData.get("reference") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!FULFILLMENT_STATUSES.includes(status)) return;
@@ -45,27 +61,53 @@ export async function updateFulfillmentAction(formData: FormData) {
   getDb()
     .prepare("UPDATE orders SET fulfillment_status = ? WHERE id = ?")
     .run(status, order.id);
-  logEvent(order.id, `Fulfillment changed: ${order.fulfillment_status} → ${status}`);
+  logEvent(order.id, `Fulfillment changed: ${order.fulfillment_status} → ${status} (by ${admin.name})`);
   revalidatePath("/admin");
   revalidatePath(`/admin/orders/${reference}`);
 }
 
 export async function saveNotesAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requirePermission("orders.notes");
   const reference = String(formData.get("reference") ?? "");
   const notes = String(formData.get("notes") ?? "").slice(0, 5000);
   const order = getOrderByReference(reference);
   if (!order) return;
   getDb().prepare("UPDATE orders SET notes = ? WHERE id = ?").run(notes, order.id);
-  logEvent(order.id, "Notes updated");
+  logEvent(order.id, `Notes updated (by ${admin.name})`);
   revalidatePath(`/admin/orders/${reference}`);
+}
+
+export async function notifyShippedAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const admin = await requirePermission("email.send");
+  const ip = clientIp(await headers());
+  if (!rateLimit(`shipmail:${ip}`, 20, 60_000))
+    return { message: "Too many emails at once. Wait a minute.", ok: false };
+  const reference = String(formData.get("reference") ?? "");
+  const order = getOrderByReference(reference);
+  if (!order) return { message: "Order not found.", ok: false };
+  if (order.payment_status !== "paid")
+    return { message: "Only paid orders can be marked as shipped to the customer.", ok: false };
+  if (order.fulfillment_status !== "shipped" && order.fulfillment_status !== "delivered")
+    return { message: "Set the status to Shipped first, then send the email.", ok: false };
+  const sent = await sendShippedNotification(order);
+  revalidatePath(`/admin/orders/${reference}`);
+  return sent
+    ? { message: `Shipped email sent to ${order.email}. (by ${admin.name})`, ok: true }
+    : {
+        message:
+          "Email could not be sent. Check the SMTP settings in .env.local and the order history for details.",
+        ok: false,
+      };
 }
 
 export async function saveSettingsAction(
   _prev: { message: string } | null,
   formData: FormData
 ): Promise<{ message: string }> {
-  await requireAdmin();
+  await requirePermission("settings.prices");
   const parse = (key: string): number | null => {
     const n = Number(formData.get(key));
     if (!Number.isFinite(n) || n < 0 || n > 10_000_000) return null;
@@ -84,4 +126,109 @@ export async function saveSettingsAction(
   revalidatePath("/checkout");
   revalidatePath("/admin/settings");
   return { message: "Saved. New prices are live on the checkout page." };
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function saveEmailSettingsAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  await requirePermission("settings.email");
+  const notifyEmail = String(formData.get("notifyEmail") ?? "").trim();
+  if (notifyEmail && (!EMAIL_RE.test(notifyEmail) || notifyEmail.length > 254))
+    return { message: "Enter a valid email address.", ok: false };
+  getDb()
+    .prepare("UPDATE settings SET value = ? WHERE key = 'notify_email'")
+    .run(notifyEmail);
+  revalidatePath("/admin/email");
+  return { message: "Saved. New paid orders will alert this address.", ok: true };
+}
+
+export async function sendTestEmailAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  await requirePermission("settings.email");
+  const to = String(formData.get("testTo") ?? "").trim();
+  if (!EMAIL_RE.test(to)) return { message: "Enter a valid email address.", ok: false };
+  const result = await sendTestEmail(to);
+  return result.ok
+    ? { message: `Test email sent to ${to}. Check the inbox.`, ok: true }
+    : { message: result.error ?? "Send failed.", ok: false };
+}
+
+const ROLES: Role[] = ["owner", "manager", "staff"];
+
+export async function createAdminAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const actor = await requirePermission("admins.manage");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const name = String(formData.get("name") ?? "").trim();
+  const role = String(formData.get("role") ?? "") as Role;
+  const password = String(formData.get("password") ?? "");
+  if (!EMAIL_RE.test(email) || email.length > 254)
+    return { message: "Enter a valid email address.", ok: false };
+  if (name.length < 2 || name.length > 100)
+    return { message: "Name must be 2–100 characters.", ok: false };
+  if (!ROLES.includes(role)) return { message: "Choose a role.", ok: false };
+  if (password.length < 10 || password.length > 200)
+    return { message: "Password must be at least 10 characters.", ok: false };
+  if (getAdminByEmail(email))
+    return { message: "An admin with that email already exists.", ok: false };
+  createAdmin({ email, name, role, password });
+  logAdminEvent(actor.name, `Created admin ${email} (${role})`);
+  revalidatePath("/admin/team");
+  return { message: `${name} can now sign in as ${role}.`, ok: true };
+}
+
+export async function updateAdminAction(formData: FormData) {
+  const actor = await requirePermission("admins.manage");
+  const id = Number(formData.get("id"));
+  const db = getDb();
+  const target = db.prepare("SELECT * FROM admins WHERE id = ?").get(id) as
+    | { id: number; email: string; role: Role; active: number }
+    | undefined;
+  if (!target) return;
+
+  const role = String(formData.get("role") ?? "") as Role;
+  const active = formData.get("active") === "1" ? 1 : 0;
+  if (!ROLES.includes(role)) return;
+  // Never allow removing the last active owner (including demoting/disabling yourself).
+  const staysOwner = role === "owner" && active === 1;
+  if (!staysOwner && target.role === "owner" && target.active === 1 && activeOwnerCount(target.id) === 0)
+    return;
+  if (target.id === actor.id && active === 0) return;
+
+  db.prepare("UPDATE admins SET role = ?, active = ? WHERE id = ?").run(role, active, id);
+  logAdminEvent(actor.name, `Updated admin ${target.email}: role=${role}, active=${active}`);
+  revalidatePath("/admin/team");
+}
+
+export async function resetAdminPasswordAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const actor = await requirePermission("admins.manage");
+  const id = Number(formData.get("id"));
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 10 || password.length > 200)
+    return { message: "Password must be at least 10 characters.", ok: false };
+  const db = getDb();
+  const target = db.prepare("SELECT email FROM admins WHERE id = ?").get(id) as
+    | { email: string }
+    | undefined;
+  if (!target) return { message: "Admin not found.", ok: false };
+  db.prepare("UPDATE admins SET password_hash = ? WHERE id = ?").run(hashPassword(password), id);
+  logAdminEvent(actor.name, `Reset password for ${target.email}`);
+  revalidatePath("/admin/team");
+  return { message: `Password reset for ${target.email}.`, ok: true };
+}
+
+function logAdminEvent(actor: string, event: string) {
+  getDb()
+    .prepare("INSERT INTO admin_events (actor, event) VALUES (?, ?)")
+    .run(actor, event);
 }

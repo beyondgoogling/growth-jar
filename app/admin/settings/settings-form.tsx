@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveSettingsAction } from "../actions";
+import { btnPrimary, inputClass, labelClass } from "../styles";
 
 const fields = [
   { name: "journalPrice", label: "Journal only price (₦)" },
@@ -16,13 +17,10 @@ export function SettingsForm({
 }) {
   const [state, action, pending] = useActionState(saveSettingsAction, null);
   return (
-    <form action={action} className="mt-8 space-y-5">
+    <form action={action} className="space-y-5">
       {fields.map((f) => (
         <div key={f.name}>
-          <label
-            htmlFor={f.name}
-            className="mb-1 block text-xs font-semibold uppercase tracking-[0.15em] text-sage-deep"
-          >
+          <label htmlFor={f.name} className={labelClass}>
             {f.label}
           </label>
           <input
@@ -34,20 +32,16 @@ export function SettingsForm({
             step={100}
             required
             defaultValue={initial[f.name]}
-            className="w-full rounded-lg border border-sage/40 bg-parchment px-4 py-3 outline-none focus:border-sage-deep focus:ring-2 focus:ring-sage/30"
+            className={inputClass}
           />
         </div>
       ))}
       {state?.message && (
-        <p role="status" className="rounded-lg bg-sage/15 p-3 text-sm text-sage-dark">
+        <p role="status" className="rounded-xl bg-sage/15 p-3 text-sm text-sage-dark ring-1 ring-sage/30">
           {state.message}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-full bg-sage-dark px-8 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-parchment hover:bg-gold disabled:opacity-60"
-      >
+      <button type="submit" disabled={pending} className={btnPrimary}>
         {pending ? "Saving…" : "Save changes"}
       </button>
     </form>
