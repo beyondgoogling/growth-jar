@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       { status: 503 }
     );
 
-  const settings = getSettings();
+  const settings = await getSettings();
   const unitPrice =
     input.package === "journal"
       ? settings.journalPriceKobo
@@ -44,15 +44,13 @@ export async function POST(request: Request) {
   const total = unitPrice * input.quantity + settings.shippingFeeKobo;
   const reference = `GJ-${randomBytes(6).toString("hex").toUpperCase()}`;
 
-  const db = getDb();
-  const inserted = db
-    .prepare(
-      `INSERT INTO orders
+  const db = await getDb();
+  const inserted = await db.execute({
+    sql: `INSERT INTO orders
         (reference, package, quantity, unit_price_kobo, shipping_kobo, total_kobo,
          customer_name, email, phone, address_line, city, state)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
       reference,
       input.package,
       input.quantity,
@@ -64,10 +62,11 @@ export async function POST(request: Request) {
       input.phone,
       input.addressLine,
       input.city,
-      input.state
-    );
+      input.state,
+    ],
+  });
   const orderId = Number(inserted.lastInsertRowid);
-  logEvent(orderId, "Order created");
+  await logEvent(orderId, "Order created");
 
   try {
     const { authorization_url } = await initializeTransaction({
@@ -77,10 +76,10 @@ export async function POST(request: Request) {
       callbackUrl: `${new URL(request.url).origin}/checkout/verify`,
       metadata: { order_id: orderId, package: input.package, quantity: input.quantity },
     });
-    logEvent(orderId, "Paystack payment initialized");
+    await logEvent(orderId, "Paystack payment initialized");
     return Response.json({ authorizationUrl: authorization_url });
   } catch {
-    logEvent(orderId, "Paystack initialization failed");
+    await logEvent(orderId, "Paystack initialization failed");
     return Response.json(
       { error: "Could not start the payment. Please try again." },
       { status: 502 }

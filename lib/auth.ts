@@ -55,7 +55,7 @@ export async function getCurrentAdmin(): Promise<Admin | null> {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (typeof data.exp !== "number" || data.exp <= Date.now()) return null;
     if (typeof data.aid !== "number") return null;
-    const admin = getAdminById(data.aid);
+    const admin = await getAdminById(data.aid);
     return admin && admin.active ? admin : null;
   } catch {
     return null;

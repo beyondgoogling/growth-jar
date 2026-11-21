@@ -37,7 +37,7 @@ async function VerifyResult({
 }) {
   const params = await searchParams;
   const reference = typeof params.reference === "string" ? params.reference : "";
-  const order = reference ? getOrderByReference(reference) : undefined;
+  const order = reference ? await getOrderByReference(reference) : undefined;
 
   if (!order) {
     return (
@@ -55,7 +55,7 @@ async function VerifyResult({
       verified.amount === order.total_kobo &&
       verified.currency === order.currency
     ) {
-      if (markPaid(order.id)) {
+      if (await markPaid(order.id)) {
         order.payment_status = "paid";
         await sendOrderConfirmation(order);
         await sendAdminNewOrderAlert(order);
@@ -63,7 +63,7 @@ async function VerifyResult({
         order.payment_status = "paid";
       }
     } else if (verified?.status === "failed") {
-      markFailed(order.id);
+      await markFailed(order.id);
       order.payment_status = "failed";
     }
   }

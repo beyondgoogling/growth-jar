@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const reference = event.data?.reference;
   if (!reference) return new Response("OK");
-  const order = getOrderByReference(reference);
+  const order = await getOrderByReference(reference);
   if (!order) return new Response("OK");
 
   // Never trust the webhook payload alone — confirm with Paystack's API.
@@ -36,13 +36,13 @@ export async function POST(request: Request) {
     verified.amount === order.total_kobo &&
     verified.currency === order.currency
   ) {
-    if (markPaid(order.id)) {
-      const paidOrder = getOrderByReference(reference) as Order;
+    if (await markPaid(order.id)) {
+      const paidOrder = (await getOrderByReference(reference)) as Order;
       await sendOrderConfirmation(paidOrder);
       await sendAdminNewOrderAlert(paidOrder);
     }
   } else if (verified.status === "failed") {
-    markFailed(order.id);
+    await markFailed(order.id);
   }
 
   return new Response("OK");

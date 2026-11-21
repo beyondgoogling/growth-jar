@@ -31,7 +31,7 @@ export async function loginAction(
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const admin = email ? getAdminByEmail(email) : undefined;
+  const admin = email ? await getAdminByEmail(email) : undefined;
   // Always run a hash verification so timing doesn't reveal whether the email exists.
   const hash =
     admin?.password_hash ??
@@ -56,12 +56,14 @@ export async function updateFulfillmentAction(formData: FormData) {
   const reference = String(formData.get("reference") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!FULFILLMENT_STATUSES.includes(status)) return;
-  const order = getOrderByReference(reference);
+  const order = await getOrderByReference(reference);
   if (!order || order.fulfillment_status === status) return;
-  getDb()
-    .prepare("UPDATE orders SET fulfillment_status = ? WHERE id = ?")
-    .run(status, order.id);
-  logEvent(order.id, `Fulfillment changed: ${order.fulfillment_status} → ${status} (by ${admin.name})`);
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE orders SET fulfillment_status = ? WHERE id = ?",
+    args: [status, order.id],
+  });
+  await logEvent(order.id, `Fulfillment changed: ${order.fulfillment_status} → ${status} (by ${admin.name})`);
   revalidatePath("/knoxx");
   revalidatePath(`/knoxx/orders/${reference}`);
 }
@@ -70,10 +72,14 @@ export async function saveNotesAction(formData: FormData) {
   const admin = await requirePermission("orders.notes");
   const reference = String(formData.get("reference") ?? "");
   const notes = String(formData.get("notes") ?? "").slice(0, 5000);
-  const order = getOrderByReference(reference);
+  const order = await getOrderByReference(reference);
   if (!order) return;
-  getDb().prepare("UPDATE orders SET notes = ? WHERE id = ?").run(notes, order.id);
-  logEvent(order.id, `Notes updated (by ${admin.name})`);
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE orders SET notes = ? WHERE id = ?",
+    args: [notes, order.id],
+  });
+  await logEvent(order.id, `Notes updated (by ${admin.name})`);
   revalidatePath(`/knoxx/orders/${reference}`);
 }
 
@@ -86,7 +92,7 @@ export async function notifyShippedAction(
   if (!rateLimit(`shipmail:${ip}`, 20, 60_000))
     return { message: "Too many emails at once. Wait a minute.", ok: false };
   const reference = String(formData.get("reference") ?? "");
-  const order = getOrderByReference(reference);
+  const order = await getOrderByReference(reference);
   if (!order) return { message: "Order not found.", ok: false };
   if (order.payment_status !== "paid")
     return { message: "Only paid orders can be marked as shipped to the customer.", ok: false };
@@ -118,7 +124,7 @@ export async function saveSettingsAction(
   const shipping = parse("shippingFee");
   if (journal === null || complete === null || shipping === null)
     return { message: "Prices must be numbers between ₦0 and ₦10,000,000." };
-  updateSettings({
+  await updateSettings({
     journalPriceKobo: journal,
     completePriceKobo: complete,
     shippingFeeKobo: shipping,
@@ -138,9 +144,11 @@ export async function saveEmailSettingsAction(
   const notifyEmail = String(formData.get("notifyEmail") ?? "").trim();
   if (notifyEmail && (!EMAIL_RE.test(notifyEmail) || notifyEmail.length > 254))
     return { message: "Enter a valid email address.", ok: false };
-  getDb()
-    .prepare("UPDATE settings SET value = ? WHERE key = 'notify_email'")
-    .run(notifyEmail);
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE settings SET value = ? WHERE key = 'notify_email'",
+    args: [notifyEmail],
+  });
   revalidatePath("/knoxx/email");
   return { message: "Saved. New paid orders will alert this address.", ok: true };
 }
@@ -176,10 +184,10 @@ export async function createAdminAction(
   if (!ROLES.includes(role)) return { message: "Choose a role.", ok: false };
   if (password.length < 10 || password.length > 200)
     return { message: "Password must be at least 10 characters.", ok: false };
-  if (getAdminByEmail(email))
+  if (await getAdminByEmail(email))
     return { message: "An admin with that email already exists.", ok: false };
-  createAdmin({ email, name, role, password });
-  logAdminEvent(actor.name, `Created admin ${email} (${role})`);
+  await createAdmin({ email, name, role, password });
+  await logAdminEvent(actor.name, `Created admin ${email} (${role})`);
   revalidatePath("/knoxx/team");
   return { message: `${name} can now sign in as ${role}.`, ok: true };
 }
@@ -187,8 +195,12 @@ export async function createAdminAction(
 export async function updateAdminAction(formData: FormData) {
   const actor = await requirePermission("admins.manage");
   const id = Number(formData.get("id"));
-  const db = getDb();
-  const target = db.prepare("SELECT * FROM admins WHERE id = ?").get(id) as
+  const db = await getDb();
+  const targetRs = await db.execute({
+    sql: "SELECT * FROM admins WHERE id = ?",
+    args: [id],
+  });
+  const target = targetRs.rows[0] as unknown as
     | { id: number; email: string; role: Role; active: number }
     | undefined;
   if (!target) return;
@@ -198,12 +210,15 @@ export async function updateAdminAction(formData: FormData) {
   if (!ROLES.includes(role)) return;
   // Never allow removing the last active owner (including demoting/disabling yourself).
   const staysOwner = role === "owner" && active === 1;
-  if (!staysOwner && target.role === "owner" && target.active === 1 && activeOwnerCount(target.id) === 0)
+  if (!staysOwner && target.role === "owner" && target.active === 1 && (await activeOwnerCount(target.id)) === 0)
     return;
   if (target.id === actor.id && active === 0) return;
 
-  db.prepare("UPDATE admins SET role = ?, active = ? WHERE id = ?").run(role, active, id);
-  logAdminEvent(actor.name, `Updated admin ${target.email}: role=${role}, active=${active}`);
+  await db.execute({
+    sql: "UPDATE admins SET role = ?, active = ? WHERE id = ?",
+    args: [role, active, id],
+  });
+  await logAdminEvent(actor.name, `Updated admin ${target.email}: role=${role}, active=${active}`);
   revalidatePath("/knoxx/team");
 }
 
@@ -216,19 +231,26 @@ export async function resetAdminPasswordAction(
   const password = String(formData.get("password") ?? "");
   if (password.length < 10 || password.length > 200)
     return { message: "Password must be at least 10 characters.", ok: false };
-  const db = getDb();
-  const target = db.prepare("SELECT email FROM admins WHERE id = ?").get(id) as
-    | { email: string }
-    | undefined;
+  const db = await getDb();
+  const targetRs = await db.execute({
+    sql: "SELECT email FROM admins WHERE id = ?",
+    args: [id],
+  });
+  const target = targetRs.rows[0] as unknown as { email: string } | undefined;
   if (!target) return { message: "Admin not found.", ok: false };
-  db.prepare("UPDATE admins SET password_hash = ? WHERE id = ?").run(hashPassword(password), id);
-  logAdminEvent(actor.name, `Reset password for ${target.email}`);
+  await db.execute({
+    sql: "UPDATE admins SET password_hash = ? WHERE id = ?",
+    args: [hashPassword(password), id],
+  });
+  await logAdminEvent(actor.name, `Reset password for ${target.email}`);
   revalidatePath("/knoxx/team");
   return { message: `Password reset for ${target.email}.`, ok: true };
 }
 
-function logAdminEvent(actor: string, event: string) {
-  getDb()
-    .prepare("INSERT INTO admin_events (actor, event) VALUES (?, ?)")
-    .run(actor, event);
+async function logAdminEvent(actor: string, event: string) {
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT INTO admin_events (actor, event) VALUES (?, ?)",
+    args: [actor, event],
+  });
 }

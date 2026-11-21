@@ -75,49 +75,55 @@ export function verifyPassword(password: string, stored: string): boolean {
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
-export function getAdminByEmail(
+export async function getAdminByEmail(
   email: string
-): (Admin & { password_hash: string }) | undefined {
-  return getDb()
-    .prepare("SELECT * FROM admins WHERE email = ?")
-    .get(email.toLowerCase()) as (Admin & { password_hash: string }) | undefined;
+): Promise<(Admin & { password_hash: string }) | undefined> {
+  const db = await getDb();
+  const rs = await db.execute({
+    sql: "SELECT * FROM admins WHERE email = ?",
+    args: [email.toLowerCase()],
+  });
+  return rs.rows[0] as unknown as (Admin & { password_hash: string }) | undefined;
 }
 
-export function getAdminById(id: number): Admin | undefined {
-  return getDb().prepare("SELECT * FROM admins WHERE id = ?").get(id) as
-    | Admin
-    | undefined;
+export async function getAdminById(id: number): Promise<Admin | undefined> {
+  const db = await getDb();
+  const rs = await db.execute({
+    sql: "SELECT * FROM admins WHERE id = ?",
+    args: [id],
+  });
+  return rs.rows[0] as unknown as Admin | undefined;
 }
 
-export function listAdmins(): Admin[] {
-  return getDb()
-    .prepare("SELECT * FROM admins ORDER BY id")
-    .all() as Admin[];
+export async function listAdmins(): Promise<Admin[]> {
+  const db = await getDb();
+  const rs = await db.execute("SELECT * FROM admins ORDER BY id");
+  return rs.rows as unknown as Admin[];
 }
 
-export function activeOwnerCount(excludeId?: number): number {
-  const row = getDb()
-    .prepare(
-      "SELECT COUNT(*) AS n FROM admins WHERE role = 'owner' AND active = 1 AND id != ?"
-    )
-    .get(excludeId ?? -1) as { n: number };
-  return row.n;
+export async function activeOwnerCount(excludeId?: number): Promise<number> {
+  const db = await getDb();
+  const rs = await db.execute({
+    sql: "SELECT COUNT(*) AS n FROM admins WHERE role = 'owner' AND active = 1 AND id != ?",
+    args: [excludeId ?? -1],
+  });
+  return Number(rs.rows[0].n);
 }
 
-export function createAdmin(input: {
+export async function createAdmin(input: {
   email: string;
   name: string;
   role: Role;
   password: string;
 }) {
-  getDb()
-    .prepare(
-      "INSERT INTO admins (email, name, role, password_hash) VALUES (?, ?, ?, ?)"
-    )
-    .run(
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT INTO admins (email, name, role, password_hash) VALUES (?, ?, ?, ?)",
+    args: [
       input.email.toLowerCase(),
       input.name,
       input.role,
-      hashPassword(input.password)
-    );
+      hashPassword(input.password),
+    ],
+  });
 }

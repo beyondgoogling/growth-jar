@@ -1,16 +1,13 @@
 import "server-only";
-import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
-import path from "node:path";
+import { createClient, type Client } from "@libsql/client";
 
-const globalForDb = globalThis as unknown as { __gjDb?: DatabaseSync };
+const globalForDb = globalThis as unknown as { __gjDb?: Promise<Client> };
 
-function createDb(): DatabaseSync {
-  const dir = path.join(process.cwd(), "data");
-  mkdirSync(dir, { recursive: true });
-  const db = new DatabaseSync(path.join(dir, "growth-jar.db"));
-  db.exec(`
-    PRAGMA journal_mode = WAL;
+async function createDb(): Promise<Client> {
+  const url = process.env.TURSO_DATABASE_URL;
+  if (!url) throw new Error("TURSO_DATABASE_URL is not set");
+  const db = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
+  await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
@@ -61,15 +58,19 @@ function createDb(): DatabaseSync {
       event TEXT NOT NULL
     );
   `);
-  const seed = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
-  seed.run("journal_price_kobo", "1500000");
-  seed.run("complete_price_kobo", "2500000");
-  seed.run("shipping_fee_kobo", "300000");
-  seed.run("notify_email", "");
+  await db.batch(
+    [
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('journal_price_kobo', '1500000')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('complete_price_kobo', '2500000')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('shipping_fee_kobo', '300000')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email', '')",
+    ],
+    "write"
+  );
   return db;
 }
 
-export function getDb(): DatabaseSync {
+export function getDb(): Promise<Client> {
   if (!globalForDb.__gjDb) globalForDb.__gjDb = createDb();
   return globalForDb.__gjDb;
 }
@@ -103,12 +104,12 @@ export type Settings = {
   shippingFeeKobo: number;
 };
 
-export function getSettings(): Settings {
-  const rows = getDb().prepare("SELECT key, value FROM settings").all() as {
-    key: string;
-    value: string;
-  }[];
-  const map = Object.fromEntries(rows.map((r) => [r.key, Number(r.value)]));
+export async function getSettings(): Promise<Settings> {
+  const db = await getDb();
+  const rs = await db.execute("SELECT key, value FROM settings");
+  const map = Object.fromEntries(
+    rs.rows.map((r) => [r.key as string, Number(r.value)])
+  );
   return {
     journalPriceKobo: map.journal_price_kobo,
     completePriceKobo: map.complete_price_kobo,
@@ -116,45 +117,64 @@ export function getSettings(): Settings {
   };
 }
 
-export function updateSettings(s: Settings) {
-  const stmt = getDb().prepare("UPDATE settings SET value = ? WHERE key = ?");
-  stmt.run(String(s.journalPriceKobo), "journal_price_kobo");
-  stmt.run(String(s.completePriceKobo), "complete_price_kobo");
-  stmt.run(String(s.shippingFeeKobo), "shipping_fee_kobo");
+export async function updateSettings(s: Settings) {
+  const db = await getDb();
+  await db.batch(
+    [
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [String(s.journalPriceKobo), "journal_price_kobo"],
+      },
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [String(s.completePriceKobo), "complete_price_kobo"],
+      },
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [String(s.shippingFeeKobo), "shipping_fee_kobo"],
+      },
+    ],
+    "write"
+  );
 }
 
-export function logEvent(orderId: number, event: string) {
-  getDb()
-    .prepare("INSERT INTO order_events (order_id, event) VALUES (?, ?)")
-    .run(orderId, event);
+export async function logEvent(orderId: number, event: string) {
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT INTO order_events (order_id, event) VALUES (?, ?)",
+    args: [orderId, event],
+  });
 }
 
-export function getOrderByReference(reference: string): Order | undefined {
-  return getDb()
-    .prepare("SELECT * FROM orders WHERE reference = ?")
-    .get(reference) as Order | undefined;
+export async function getOrderByReference(
+  reference: string
+): Promise<Order | undefined> {
+  const db = await getDb();
+  const rs = await db.execute({
+    sql: "SELECT * FROM orders WHERE reference = ?",
+    args: [reference],
+  });
+  return rs.rows[0] as unknown as Order | undefined;
 }
 
-export function markPaid(orderId: number): boolean {
-  const db = getDb();
-  const res = db
-    .prepare(
-      "UPDATE orders SET payment_status = 'paid', paid_at = datetime('now') WHERE id = ? AND payment_status != 'paid'"
-    )
-    .run(orderId);
-  if (Number(res.changes) > 0) {
-    logEvent(orderId, "Payment confirmed via Paystack");
+export async function markPaid(orderId: number): Promise<boolean> {
+  const db = await getDb();
+  const res = await db.execute({
+    sql: "UPDATE orders SET payment_status = 'paid', paid_at = datetime('now') WHERE id = ? AND payment_status != 'paid'",
+    args: [orderId],
+  });
+  if (res.rowsAffected > 0) {
+    await logEvent(orderId, "Payment confirmed via Paystack");
     return true;
   }
   return false;
 }
 
-export function markFailed(orderId: number) {
-  const db = getDb();
-  const res = db
-    .prepare(
-      "UPDATE orders SET payment_status = 'failed' WHERE id = ? AND payment_status = 'pending'"
-    )
-    .run(orderId);
-  if (Number(res.changes) > 0) logEvent(orderId, "Payment attempt failed");
+export async function markFailed(orderId: number) {
+  const db = await getDb();
+  const res = await db.execute({
+    sql: "UPDATE orders SET payment_status = 'failed' WHERE id = ? AND payment_status = 'pending'",
+    args: [orderId],
+  });
+  if (res.rowsAffected > 0) await logEvent(orderId, "Payment attempt failed");
 }

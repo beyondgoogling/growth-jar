@@ -81,20 +81,21 @@ export async function sendOrderConfirmation(order: Order): Promise<boolean> {
          <p style="color:#a8842c;font-style:italic;">Don't just count your blessings. Document your becoming.</p>`
       )
     );
-    logEvent(order.id, `Confirmation email sent to ${order.email}`);
+    await logEvent(order.id, `Confirmation email sent to ${order.email}`);
     return true;
   } catch {
-    logEvent(order.id, "Confirmation email failed to send");
+    await logEvent(order.id, "Confirmation email failed to send");
     return false;
   }
 }
 
 export async function sendAdminNewOrderAlert(order: Order): Promise<boolean> {
   if (!emailConfigured()) return false;
-  const row = getDb()
-    .prepare("SELECT value FROM settings WHERE key = 'notify_email'")
-    .get() as { value: string } | undefined;
-  const to = row?.value;
+  const db = await getDb();
+  const rs = await db.execute(
+    "SELECT value FROM settings WHERE key = 'notify_email'"
+  );
+  const to = rs.rows[0]?.value as string | undefined;
   if (!to) return false;
   try {
     await send(
@@ -108,10 +109,10 @@ export async function sendAdminNewOrderAlert(order: Order): Promise<boolean> {
          <p>Open the admin dashboard to manage this order.</p>`
       )
     );
-    logEvent(order.id, `Admin alert sent to ${to}`);
+    await logEvent(order.id, `Admin alert sent to ${to}`);
     return true;
   } catch {
-    logEvent(order.id, "Admin alert email failed to send");
+    await logEvent(order.id, "Admin alert email failed to send");
     return false;
   }
 }
@@ -132,10 +133,10 @@ export async function sendShippedNotification(order: Order): Promise<boolean> {
          <p style="color:#a8842c;font-style:italic;">Write it. Tear it. Save it. One week at a time.</p>`
       )
     );
-    logEvent(order.id, `Shipped notification emailed to ${order.email}`);
+    await logEvent(order.id, `Shipped notification emailed to ${order.email}`);
     return true;
   } catch {
-    logEvent(order.id, "Shipped notification email failed to send");
+    await logEvent(order.id, "Shipped notification email failed to send");
     return false;
   }
 }

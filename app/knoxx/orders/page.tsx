@@ -17,9 +17,10 @@ export default function OrdersPage() {
 
 async function Orders() {
   const admin = await requireAdmin();
-  const orders = getDb()
-    .prepare("SELECT * FROM orders ORDER BY id DESC LIMIT 1000")
-    .all() as Order[];
+  const db = await getDb();
+  const orders = (
+    await db.execute("SELECT * FROM orders ORDER BY id DESC LIMIT 1000")
+  ).rows as unknown as Order[];
 
   return (
     <AdminShell

@@ -21,9 +21,9 @@ function ShellLoading() {
 
 async function Dashboard() {
   const admin = await requireAdmin();
-  const orders = getDb()
-    .prepare("SELECT * FROM orders ORDER BY id DESC")
-    .all() as Order[];
+  const db = await getDb();
+  const orders = (await db.execute("SELECT * FROM orders ORDER BY id DESC"))
+    .rows as unknown as Order[];
   const paid = orders.filter((o) => o.payment_status === "paid");
   const revenue = paid.reduce((s, o) => s + o.total_kobo, 0);
   const toShip = paid.filter((o) => o.fulfillment_status === "unfulfilled").length;

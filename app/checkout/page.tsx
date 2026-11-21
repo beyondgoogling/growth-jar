@@ -43,5 +43,5 @@ export default function CheckoutPage() {
 
 async function CheckoutLoader() {
   await connection();
-  return <CheckoutForm settings={getSettings()} />;
+  return <CheckoutForm settings={await getSettings()} />;
 }

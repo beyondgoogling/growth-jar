@@ -14,7 +14,7 @@ export default function SettingsPage() {
 
 async function Settings() {
   const admin = await requirePermission("settings.prices");
-  const s = getSettings();
+  const s = await getSettings();
   return (
     <AdminShell
       admin={admin}

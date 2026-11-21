@@ -1,8 +1,8 @@
 // One-time setup: creates the first owner account from .env.local values.
 // Run: node scripts/create-owner.mjs
-import { DatabaseSync } from "node:sqlite";
+import { createClient } from "@libsql/client";
 import { randomBytes, scryptSync } from "node:crypto";
-import { mkdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 const env = {};
 try {
@@ -26,10 +26,16 @@ if (password.length < 10) {
   console.error("Set ADMIN_PASSWORD to at least 10 characters in .env.local first.");
   process.exit(1);
 }
+if (!env.TURSO_DATABASE_URL) {
+  console.error("Set TURSO_DATABASE_URL in .env.local first.");
+  process.exit(1);
+}
 
-mkdirSync("data", { recursive: true });
-const db = new DatabaseSync("data/growth-jar.db");
-db.exec(`CREATE TABLE IF NOT EXISTS admins (
+const db = createClient({
+  url: env.TURSO_DATABASE_URL,
+  authToken: env.TURSO_AUTH_TOKEN,
+});
+await db.execute(`CREATE TABLE IF NOT EXISTS admins (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
@@ -39,15 +45,19 @@ db.exec(`CREATE TABLE IF NOT EXISTS admins (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 
-const existing = db.prepare("SELECT id FROM admins WHERE email = ?").get(email);
-if (existing) {
+const existing = await db.execute({
+  sql: "SELECT id FROM admins WHERE email = ?",
+  args: [email],
+});
+if (existing.rows.length > 0) {
   console.log(`Owner ${email} already exists — nothing changed.`);
 } else {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");
-  db.prepare(
-    "INSERT INTO admins (email, name, role, password_hash) VALUES (?, ?, 'owner', ?)"
-  ).run(email, name, `${salt}:${hash}`);
+  await db.execute({
+    sql: "INSERT INTO admins (email, name, role, password_hash) VALUES (?, ?, 'owner', ?)",
+    args: [email, name, `${salt}:${hash}`],
+  });
   console.log(`Owner account created: ${email}`);
 }
 db.close();

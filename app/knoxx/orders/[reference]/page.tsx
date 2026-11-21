@@ -29,12 +29,16 @@ async function OrderDetail({
 }) {
   const admin = await requireAdmin();
   const { reference } = await params;
-  const order = getOrderByReference(reference);
+  const order = await getOrderByReference(reference);
   if (!order) notFound();
 
-  const events = getDb()
-    .prepare("SELECT * FROM order_events WHERE order_id = ? ORDER BY id DESC")
-    .all(order.id) as { id: number; at: string; event: string }[];
+  const db = await getDb();
+  const events = (
+    await db.execute({
+      sql: "SELECT * FROM order_events WHERE order_id = ? ORDER BY id DESC",
+      args: [order.id],
+    })
+  ).rows as unknown as { id: number; at: string; event: string }[];
 
   const canFulfill = can(admin.role, "orders.fulfill");
   const canNote = can(admin.role, "orders.notes");

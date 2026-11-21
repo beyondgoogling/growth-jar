@@ -4,8 +4,10 @@ import PDFDocument from "pdfkit";
 import { getDb, type Order } from "./db";
 import { formatDate, naira, PACKAGE_LABELS } from "./format";
 
-export function getAllOrders(): Order[] {
-  return getDb().prepare("SELECT * FROM orders ORDER BY id DESC").all() as Order[];
+export async function getAllOrders(): Promise<Order[]> {
+  const db = await getDb();
+  const rs = await db.execute("SELECT * FROM orders ORDER BY id DESC");
+  return rs.rows as unknown as Order[];
 }
 
 const COLUMNS = [

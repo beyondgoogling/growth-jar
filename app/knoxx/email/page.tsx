@@ -15,9 +15,11 @@ export default function EmailPage() {
 
 async function EmailSettings() {
   const admin = await requirePermission("settings.email");
-  const row = getDb()
-    .prepare("SELECT value FROM settings WHERE key = 'notify_email'")
-    .get() as { value: string };
+  const db = await getDb();
+  const rs = await db.execute(
+    "SELECT value FROM settings WHERE key = 'notify_email'"
+  );
+  const row = rs.rows[0] as unknown as { value: string };
   const configured = emailConfigured();
 
   return (

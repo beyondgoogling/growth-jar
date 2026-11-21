@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     return new Response("Too many exports. Wait a minute.", { status: 429 });
 
   const format = new URL(request.url).searchParams.get("format");
-  const orders = getAllOrders();
+  const orders = await getAllOrders();
   const stamp = new Date().toISOString().slice(0, 10);
 
   if (format === "xlsx") {

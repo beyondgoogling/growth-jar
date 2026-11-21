@@ -22,7 +22,7 @@ export default function TeamPage() {
 
 async function Team() {
   const admin = await requirePermission("admins.manage");
-  const admins = listAdmins();
+  const admins = await listAdmins();
 
   return (
     <AdminShell
