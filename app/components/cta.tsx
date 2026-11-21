@@ -24,7 +24,7 @@ export function PreorderButton({
 
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gold">
+    <p className="text-balance text-xs font-semibold uppercase tracking-[0.2em] text-gold sm:tracking-[0.3em]">
       {children}
     </p>
   );

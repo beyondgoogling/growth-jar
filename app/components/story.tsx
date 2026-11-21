@@ -5,9 +5,9 @@ export function Story() {
   return (
     <>
       <section className="bg-linen">
-        <div className="mx-auto max-w-3xl space-y-6 px-6 py-20 text-center md:py-28">
+        <div className="mx-auto max-w-3xl space-y-6 px-6 py-16 text-center md:py-28">
           <Eyebrow>A moment down memory lane</Eyebrow>
-          <h2 className="font-serif text-4xl font-medium text-sage-dark md:text-5xl">
+          <h2 className="text-balance font-serif text-4xl font-medium text-sage-dark md:text-5xl">
             Think about the person you were a year ago.
           </h2>
           <div className="space-y-5 leading-relaxed text-ink-soft">
@@ -45,7 +45,7 @@ export function Story() {
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
+      <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-28">
         <Image
           src="/jar.png"
           alt="A clear glass Growth Jar filled with folded weekly reflection slips"
@@ -56,7 +56,7 @@ export function Story() {
         />
         <div className="space-y-6">
           <Eyebrow>52 weeks of intentional reflection</Eyebrow>
-          <h2 className="font-serif text-4xl font-medium leading-tight text-sage-dark md:text-5xl">
+          <h2 className="text-balance font-serif text-4xl font-medium leading-tight text-sage-dark md:text-5xl">
             What if you could meet yourself from 52 weeks ago?
           </h2>
           <div className="space-y-4 leading-relaxed text-ink-soft">
@@ -85,7 +85,7 @@ export function Story() {
       </section>
 
       <section className="bg-parchment">
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-28">
           <div className="space-y-6 md:order-2">
             <Image
               src="/journal.png"
@@ -98,7 +98,7 @@ export function Story() {
           </div>
           <div className="space-y-6 md:order-1">
             <Eyebrow>An experience you can hold</Eyebrow>
-            <h2 className="font-serif text-4xl font-medium leading-tight text-sage-dark md:text-5xl">
+            <h2 className="text-balance font-serif text-4xl font-medium leading-tight text-sage-dark md:text-5xl">
               This is more than a gratitude journal.
             </h2>
             <div className="space-y-4 leading-relaxed text-ink-soft">

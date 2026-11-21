@@ -5,12 +5,12 @@ export function Hero() {
   return (
     <>
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-        <span className="font-serif text-xl font-semibold uppercase tracking-[0.15em] text-sage-dark">
+        <span className="whitespace-nowrap font-serif text-lg font-semibold uppercase tracking-[0.12em] text-sage-dark sm:text-xl sm:tracking-[0.15em]">
           The Growth Jar
         </span>
         <a
           href="#preorder"
-          className="rounded-full border border-sage-dark px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-dark transition-colors hover:bg-sage-dark hover:text-parchment"
+          className="rounded-full border border-sage-dark px-4 py-2 sm:px-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-dark transition-colors hover:bg-sage-dark hover:text-parchment"
         >
           Pre-order
         </a>
@@ -19,7 +19,7 @@ export function Hero() {
       <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 pb-20 pt-10 md:grid-cols-2 md:pb-28 md:pt-16">
         <div className="space-y-7">
           <Eyebrow>52 weeks · One journal · One jar</Eyebrow>
-          <h1 className="font-serif text-5xl font-medium leading-[1.05] text-sage-dark md:text-6xl">
+          <h1 className="text-balance font-serif text-5xl font-medium leading-[1.05] text-sage-dark md:text-6xl">
             Welcome to your Growth Jar Experience
           </h1>
           <p className="font-serif text-2xl italic text-gold">

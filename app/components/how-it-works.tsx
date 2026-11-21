@@ -59,12 +59,12 @@ export function HowItWorks() {
   return (
     <>
       <section className="bg-sage-dark text-parchment">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-6 py-16 md:py-28">
           <div className="mx-auto max-w-2xl space-y-4 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gold-soft">
               The weekly ritual
             </p>
-            <h2 className="font-serif text-4xl font-medium md:text-5xl">
+            <h2 className="text-balance font-serif text-4xl font-medium md:text-5xl">
               How The Growth Jar Experience works
             </h2>
           </div>
@@ -89,10 +89,10 @@ export function HowItWorks() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-20 md:py-28">
+      <section className="mx-auto max-w-6xl px-6 py-16 md:py-28">
         <div className="mx-auto max-w-2xl space-y-4 text-center">
           <Eyebrow>Inside the journal</Eyebrow>
-          <h2 className="font-serif text-4xl font-medium text-sage-dark md:text-5xl">
+          <h2 className="text-balance font-serif text-4xl font-medium text-sage-dark md:text-5xl">
             What will you find inside?
           </h2>
           <p className="leading-relaxed text-ink-soft">

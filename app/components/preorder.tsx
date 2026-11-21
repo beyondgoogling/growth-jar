@@ -4,12 +4,12 @@ import { PreorderButton } from "./cta";
 export function Preorder() {
   return (
     <section id="preorder" className="bg-sage">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-28">
         <div className="space-y-7 text-parchment">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-parchment/80">
             Your story is worth keeping
           </p>
-          <h2 className="font-serif text-4xl font-medium leading-tight md:text-5xl">
+          <h2 className="text-balance font-serif text-4xl font-medium leading-tight md:text-5xl">
             The Growth Jar Experience
           </h2>
           <p className="font-serif text-2xl italic">

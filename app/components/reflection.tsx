@@ -4,9 +4,9 @@ export function Reflection() {
   return (
     <>
       <section className="bg-linen">
-        <div className="mx-auto max-w-3xl space-y-6 px-6 py-20 text-center md:py-28">
+        <div className="mx-auto max-w-3xl space-y-6 px-6 py-16 text-center md:py-28">
           <Eyebrow>For the ordinary weeks, too</Eyebrow>
-          <h2 className="font-serif text-4xl font-medium text-sage-dark md:text-5xl">
+          <h2 className="text-balance font-serif text-4xl font-medium text-sage-dark md:text-5xl">
             Here&apos;s something we often forget about gratitude.
           </h2>
           <div className="space-y-5 leading-relaxed text-ink-soft">
@@ -33,9 +33,9 @@ export function Reflection() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl space-y-6 px-6 py-20 text-center md:py-28">
+      <section className="mx-auto max-w-3xl space-y-6 px-6 py-16 text-center md:py-28">
         <Eyebrow>A little gift to your future self</Eyebrow>
-        <h2 className="font-serif text-4xl font-medium text-sage-dark md:text-5xl">
+        <h2 className="text-balance font-serif text-4xl font-medium text-sage-dark md:text-5xl">
           A year from now, your life may look completely different.
         </h2>
         <div className="space-y-5 leading-relaxed text-ink-soft">

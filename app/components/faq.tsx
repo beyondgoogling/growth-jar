@@ -30,10 +30,10 @@ const faqs = [
 export function Faq() {
   return (
     <>
-      <section className="mx-auto max-w-3xl px-6 py-20 md:py-28">
+      <section className="mx-auto max-w-3xl px-6 py-16 md:py-28">
         <div className="space-y-4 text-center">
           <Eyebrow>Questions, answered</Eyebrow>
-          <h2 className="font-serif text-4xl font-medium text-sage-dark md:text-5xl">
+          <h2 className="text-balance font-serif text-4xl font-medium text-sage-dark md:text-5xl">
             Frequently Asked Questions
           </h2>
         </div>
@@ -53,8 +53,8 @@ export function Faq() {
       </section>
 
       <section className="bg-linen">
-        <div className="mx-auto max-w-3xl space-y-7 px-6 py-20 text-center md:py-24">
-          <h2 className="font-serif text-4xl font-medium leading-tight text-sage-dark md:text-5xl">
+        <div className="mx-auto max-w-3xl space-y-7 px-6 py-16 text-center md:py-24">
+          <h2 className="text-balance font-serif text-4xl font-medium leading-tight text-sage-dark md:text-5xl">
             One day, these ordinary moments will become memories.
           </h2>
           <p className="font-serif text-2xl italic text-gold">
@@ -64,7 +64,7 @@ export function Faq() {
         </div>
       </section>
 
-      <footer className="bg-sage-dark py-8 text-center text-xs uppercase tracking-[0.25em] text-parchment/70">
+      <footer className="text-balance bg-sage-dark px-6 py-8 text-center text-xs uppercase tracking-[0.25em] text-parchment/70">
         The Growth Jar Experience · Launching 11 December 2026
       </footer>
     </>
