@@ -3,11 +3,11 @@ import { can, ROLE_LABELS, type Admin } from "@/lib/admins";
 import { logoutAction } from "./actions";
 
 const NAV = [
-  { href: "/admin", label: "Dashboard", icon: "◈", perm: null },
-  { href: "/admin/orders", label: "Orders", icon: "✦", perm: null },
-  { href: "/admin/settings", label: "Prices", icon: "₦", perm: "settings.prices" },
-  { href: "/admin/email", label: "Email", icon: "✉", perm: "settings.email" },
-  { href: "/admin/team", label: "Team", icon: "❖", perm: "admins.manage" },
+  { href: "/knoxx", label: "Dashboard", icon: "◈", perm: null },
+  { href: "/knoxx/orders", label: "Orders", icon: "✦", perm: null },
+  { href: "/knoxx/settings", label: "Prices", icon: "₦", perm: "settings.prices" },
+  { href: "/knoxx/email", label: "Email", icon: "✉", perm: "settings.email" },
+  { href: "/knoxx/team", label: "Team", icon: "❖", perm: "admins.manage" },
 ] as const;
 
 export function AdminShell({
@@ -35,7 +35,7 @@ export function AdminShell({
     <div className="flex min-h-screen">
       <aside className="fixed inset-y-0 left-0 z-20 flex w-60 flex-col bg-sage-dark max-lg:w-16">
         <div className="border-b border-parchment/10 px-6 py-6 max-lg:px-3">
-          <Link href="/admin" className="block">
+          <Link href="/knoxx" className="block">
             <span className="font-serif text-lg font-semibold uppercase tracking-[0.15em] text-gold-soft max-lg:hidden">
               Growth Jar
             </span>

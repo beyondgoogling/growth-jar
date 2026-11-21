@@ -41,12 +41,12 @@ export async function loginAction(
     return { error: "Incorrect email or password." };
 
   await createSession(admin.id);
-  redirect("/admin");
+  redirect("/knoxx");
 }
 
 export async function logoutAction() {
   await destroySession();
-  redirect("/admin/login");
+  redirect("/knoxx/login");
 }
 
 const FULFILLMENT_STATUSES = ["unfulfilled", "shipped", "delivered", "cancelled"];
@@ -62,8 +62,8 @@ export async function updateFulfillmentAction(formData: FormData) {
     .prepare("UPDATE orders SET fulfillment_status = ? WHERE id = ?")
     .run(status, order.id);
   logEvent(order.id, `Fulfillment changed: ${order.fulfillment_status} → ${status} (by ${admin.name})`);
-  revalidatePath("/admin");
-  revalidatePath(`/admin/orders/${reference}`);
+  revalidatePath("/knoxx");
+  revalidatePath(`/knoxx/orders/${reference}`);
 }
 
 export async function saveNotesAction(formData: FormData) {
@@ -74,7 +74,7 @@ export async function saveNotesAction(formData: FormData) {
   if (!order) return;
   getDb().prepare("UPDATE orders SET notes = ? WHERE id = ?").run(notes, order.id);
   logEvent(order.id, `Notes updated (by ${admin.name})`);
-  revalidatePath(`/admin/orders/${reference}`);
+  revalidatePath(`/knoxx/orders/${reference}`);
 }
 
 export async function notifyShippedAction(
@@ -93,7 +93,7 @@ export async function notifyShippedAction(
   if (order.fulfillment_status !== "shipped" && order.fulfillment_status !== "delivered")
     return { message: "Set the status to Shipped first, then send the email.", ok: false };
   const sent = await sendShippedNotification(order);
-  revalidatePath(`/admin/orders/${reference}`);
+  revalidatePath(`/knoxx/orders/${reference}`);
   return sent
     ? { message: `Shipped email sent to ${order.email}. (by ${admin.name})`, ok: true }
     : {
@@ -124,7 +124,7 @@ export async function saveSettingsAction(
     shippingFeeKobo: shipping,
   });
   revalidatePath("/checkout");
-  revalidatePath("/admin/settings");
+  revalidatePath("/knoxx/settings");
   return { message: "Saved. New prices are live on the checkout page." };
 }
 
@@ -141,7 +141,7 @@ export async function saveEmailSettingsAction(
   getDb()
     .prepare("UPDATE settings SET value = ? WHERE key = 'notify_email'")
     .run(notifyEmail);
-  revalidatePath("/admin/email");
+  revalidatePath("/knoxx/email");
   return { message: "Saved. New paid orders will alert this address.", ok: true };
 }
 
@@ -180,7 +180,7 @@ export async function createAdminAction(
     return { message: "An admin with that email already exists.", ok: false };
   createAdmin({ email, name, role, password });
   logAdminEvent(actor.name, `Created admin ${email} (${role})`);
-  revalidatePath("/admin/team");
+  revalidatePath("/knoxx/team");
   return { message: `${name} can now sign in as ${role}.`, ok: true };
 }
 
@@ -204,7 +204,7 @@ export async function updateAdminAction(formData: FormData) {
 
   db.prepare("UPDATE admins SET role = ?, active = ? WHERE id = ?").run(role, active, id);
   logAdminEvent(actor.name, `Updated admin ${target.email}: role=${role}, active=${active}`);
-  revalidatePath("/admin/team");
+  revalidatePath("/knoxx/team");
 }
 
 export async function resetAdminPasswordAction(
@@ -223,7 +223,7 @@ export async function resetAdminPasswordAction(
   if (!target) return { message: "Admin not found.", ok: false };
   db.prepare("UPDATE admins SET password_hash = ? WHERE id = ?").run(hashPassword(password), id);
   logAdminEvent(actor.name, `Reset password for ${target.email}`);
-  revalidatePath("/admin/team");
+  revalidatePath("/knoxx/team");
   return { message: `Password reset for ${target.email}.`, ok: true };
 }
 

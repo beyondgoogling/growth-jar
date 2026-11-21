@@ -54,7 +54,7 @@ async function OrderDetail({
       }
     >
       <Link
-        href="/admin/orders"
+        href="/knoxx/orders"
         className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-soft hover:text-gold"
       >
         ← All orders

@@ -30,10 +30,10 @@ async function Orders() {
       actions={
         can(admin.role, "orders.export") ? (
           <>
-            <a href="/api/admin/export?format=xlsx" className={btnOutline}>
+            <a href="/api/knoxx/export?format=xlsx" className={btnOutline}>
               ⬇ Export Excel
             </a>
-            <a href="/api/admin/export?format=pdf" className={btnOutline}>
+            <a href="/api/knoxx/export?format=pdf" className={btnOutline}>
               ⬇ Export PDF
             </a>
           </>
@@ -64,7 +64,7 @@ async function Orders() {
                   <tr key={o.id} className="border-b border-sage/10 transition-colors last:border-0 hover:bg-cream">
                     <td className="px-6 py-3.5">
                       <Link
-                        href={`/admin/orders/${o.reference}`}
+                        href={`/knoxx/orders/${o.reference}`}
                         className="font-mono text-xs font-semibold text-sage-dark underline decoration-gold/50 underline-offset-4 hover:text-gold"
                       >
                         {o.reference}

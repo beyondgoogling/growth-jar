@@ -39,10 +39,10 @@ async function Dashboard() {
       actions={
         can(admin.role, "orders.export") ? (
           <>
-            <a href="/api/admin/export?format=xlsx" className={btnOutline}>
+            <a href="/api/knoxx/export?format=xlsx" className={btnOutline}>
               ⬇ Excel
             </a>
-            <a href="/api/admin/export?format=pdf" className={btnOutline}>
+            <a href="/api/knoxx/export?format=pdf" className={btnOutline}>
               ⬇ PDF
             </a>
           </>
@@ -62,7 +62,7 @@ async function Dashboard() {
             Recent orders
           </h2>
           <Link
-            href="/admin/orders"
+            href="/knoxx/orders"
             className="text-xs font-semibold uppercase tracking-[0.15em] text-gold hover:text-sage-dark"
           >
             View all →
@@ -90,7 +90,7 @@ async function Dashboard() {
                   <tr key={o.id} className="border-b border-sage/10 transition-colors last:border-0 hover:bg-cream">
                     <td className="px-6 py-3.5">
                       <Link
-                        href={`/admin/orders/${o.reference}`}
+                        href={`/knoxx/orders/${o.reference}`}
                         className="font-mono text-xs font-semibold text-sage-dark underline decoration-gold/50 underline-offset-4 hover:text-gold"
                       >
                         {o.reference}

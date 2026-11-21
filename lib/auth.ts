@@ -64,12 +64,12 @@ export async function getCurrentAdmin(): Promise<Admin | null> {
 
 export async function requireAdmin(): Promise<Admin> {
   const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  if (!admin) redirect("/knoxx/login");
   return admin;
 }
 
 export async function requirePermission(permission: Permission): Promise<Admin> {
   const admin = await requireAdmin();
-  if (!can(admin.role, permission)) redirect("/admin");
+  if (!can(admin.role, permission)) redirect("/knoxx");
   return admin;
 }
