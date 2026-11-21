@@ -54,20 +54,21 @@ async function EmailSettings() {
           ) : (
             <div className="mt-3 text-sm leading-relaxed text-ink-soft">
               <p>
-                To turn emails on, add these lines to the <code>.env.local</code> file
-                on the server, then restart it:
+                Emails are sent through Resend. Add these lines to the{" "}
+                <code>.env.local</code> file on the server, then restart it:
               </p>
               <pre className="mt-3 overflow-x-auto rounded-xl bg-sage-dark p-4 text-xs leading-relaxed text-parchment">
-{`SMTP_HOST=smtp.yourprovider.com
-SMTP_PORT=587
-SMTP_USER=your-smtp-username
-SMTP_PASS=your-smtp-password
+{`SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_USER=resend
+SMTP_PASS=re_your_resend_api_key
 SMTP_FROM="The Growth Jar <orders@yourdomain.com>"`}
               </pre>
               <p className="mt-3">
-                Any email provider works (e.g. your domain host, Brevo, Mailgun,
-                Gmail app password). Until then, orders still work — emails are
-                simply skipped and noted in each order&apos;s history.
+                The password is your Resend API key, and the sender address must
+                use a domain you verified in Resend. Until then, orders still
+                work — emails are simply skipped and noted in each order&apos;s
+                history.
               </p>
             </div>
           )}
