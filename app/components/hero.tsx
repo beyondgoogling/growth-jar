@@ -17,7 +17,7 @@ export function Hero() {
       </header>
 
       <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 pb-20 pt-10 md:grid-cols-2 md:pb-28 md:pt-16">
-        <div className="space-y-7">
+        <div className="space-y-7 text-center md:text-left">
           <Eyebrow>52 weeks · One journal · One jar</Eyebrow>
           <h1 className="text-balance font-serif text-5xl font-medium leading-[1.05] text-sage-dark md:text-6xl">
             Welcome to your Growth Jar Experience
@@ -25,12 +25,12 @@ export function Hero() {
           <p className="font-serif text-2xl italic text-gold">
             Don&apos;t just count your blessings. Document your becoming.
           </p>
-          <p className="max-w-md leading-relaxed text-ink-soft">
+          <p className="mx-auto max-w-md leading-relaxed text-ink-soft md:mx-0">
             365 days worth remembering. A guided gratitude journal and jar
             journey to help you slow down, reflect, appreciate your life, and
             preserve meaningful memories.
           </p>
-          <div className="flex flex-wrap items-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-5 md:justify-start">
             <PreorderButton />
             <span className="text-xs uppercase tracking-[0.2em] text-ink-soft">
               Official launch · 11 Dec 2026

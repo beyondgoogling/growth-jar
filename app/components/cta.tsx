@@ -11,7 +11,7 @@ export function PreorderButton({
   return (
     <a
       href={PREORDER_URL}
-      className={`inline-block rounded-full px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] transition-colors ${
+      className={`inline-block rounded-full px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.2em] transition-colors ${
         light
           ? "bg-parchment text-sage-dark hover:bg-gold-soft hover:text-parchment"
           : "bg-sage-dark text-parchment hover:bg-gold"
