@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/admins";
 import { AdminShell, Card } from "../ui";
-import { ChangePasswordForm } from "./account-form";
+import { ChangePasswordForm, UpdateProfileForm } from "./account-form";
 
 export default function AccountPage() {
   return (
@@ -26,20 +26,14 @@ async function Account() {
           <h2 className="font-serif text-xl font-semibold text-sage-dark">
             Your details
           </h2>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-[0.15em] text-sage-deep">Name</dt>
-              <dd className="mt-0.5">{admin.name}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-[0.15em] text-sage-deep">Email</dt>
-              <dd className="mt-0.5">{admin.email}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-[0.15em] text-sage-deep">Role</dt>
-              <dd className="mt-0.5">{ROLE_LABELS[admin.role]}</dd>
-            </div>
-          </dl>
+          <p className="mt-1 text-sm text-ink-soft">
+            Update your name or the email you sign in with.
+          </p>
+          <UpdateProfileForm
+            name={admin.name}
+            email={admin.email}
+            roleLabel={ROLE_LABELS[admin.role]}
+          />
         </Card>
         <Card className="p-6">
           <h2 className="font-serif text-xl font-semibold text-sage-dark">

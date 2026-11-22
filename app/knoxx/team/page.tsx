@@ -10,7 +10,7 @@ import { formatDate } from "@/lib/format";
 import { updateAdminAction } from "../actions";
 import { AdminShell, Card } from "../ui";
 import { btnPrimary } from "../styles";
-import { CreateAdminForm, ResetPasswordForm } from "./team-forms";
+import { CreateAdminForm, DeleteAdminForm, EditAdminProfileForm, ResetPasswordForm } from "./team-forms";
 
 export default function TeamPage() {
   return (
@@ -87,7 +87,13 @@ async function Team() {
                     </button>
                   </form>
                 </div>
-                <ResetPasswordForm id={a.id} email={a.email} />
+                <div className="flex flex-wrap items-start gap-x-8">
+                  <ResetPasswordForm id={a.id} email={a.email} />
+                  <EditAdminProfileForm id={a.id} name={a.name} email={a.email} />
+                  {a.id !== admin.id && (
+                    <DeleteAdminForm id={a.id} name={a.name} email={a.email} />
+                  )}
+                </div>
               </div>
             ))}
           </div>

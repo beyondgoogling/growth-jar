@@ -19,6 +19,7 @@ export type Permission =
   | "orders.fulfill"
   | "orders.notes"
   | "orders.export"
+  | "orders.delete"
   | "email.send"
   | "settings.prices"
   | "settings.email"
@@ -30,6 +31,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "orders.fulfill",
     "orders.notes",
     "orders.export",
+    "orders.delete",
     "email.send",
     "settings.prices",
     "settings.email",
@@ -53,7 +55,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  owner: "Full access, including prices, email settings, and managing the team.",
+  owner: "Full access, including deleting orders, prices, email settings, and managing the team.",
   manager: "Orders, shipping emails, exports, and prices. No team or email settings.",
   staff: "View orders, update shipping status, and add notes. Nothing else.",
 };

@@ -29,7 +29,7 @@ import {
   type StateFee,
 } from "@/lib/db";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
-import { naira, usd } from "@/lib/format";
+import { money, naira, usd } from "@/lib/format";
 import { notifyActivity, sendPasswordResetEmail, sendShippedNotification, sendTestEmail } from "@/lib/email";
 
 export async function loginAction(
@@ -111,6 +111,46 @@ export async function changePasswordAction(
   return { message: "Password updated. You're still signed in on this device.", ok: true };
 }
 
+export async function updateProfileAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const admin = await requireAdmin();
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (name.length < 2 || name.length > 100)
+    return { message: "Name must be 2–100 characters.", ok: false };
+  if (!EMAIL_RE.test(email) || email.length > 254)
+    return { message: "Enter a valid email address.", ok: false };
+  const existing = await getAdminByEmail(email);
+  if (existing && existing.id !== admin.id)
+    return { message: "Another admin already uses that email.", ok: false };
+  if (name === admin.name && email === admin.email)
+    return { message: "No changes to save.", ok: true };
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE admins SET name = ?, email = ? WHERE id = ?",
+    args: [name, email, admin.id],
+  });
+  await logAdminEvent(
+    admin.name,
+    `Updated own profile: name ${admin.name} → ${name}, email ${admin.email} → ${email}`
+  );
+  after(() =>
+    notifyActivity({
+      subject: `Admin profile updated: ${email}`,
+      heading: "An admin updated their profile",
+      details: [
+        ["Name", `${admin.name} → ${name}`],
+        ["Email", `${admin.email} → ${email}`],
+      ],
+      actorEmail: admin.email,
+    })
+  );
+  revalidatePath("/knoxx/account");
+  return { message: "Profile updated.", ok: true };
+}
+
 export async function forgotPasswordAction(
   _prev: { message: string; ok: boolean } | null,
   formData: FormData
@@ -188,6 +228,47 @@ export async function resetPasswordWithTokenAction(
 }
 
 const FULFILLMENT_STATUSES = ["unfulfilled", "shipped", "delivered", "cancelled"];
+
+export async function deleteOrderAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const admin = await requirePermission("orders.delete");
+  const reference = String(formData.get("reference") ?? "");
+  const order = await getOrderByReference(reference);
+  if (!order)
+    return { message: "Order not found — it may already be deleted.", ok: false };
+  const db = await getDb();
+  await db.batch(
+    [
+      { sql: "DELETE FROM order_events WHERE order_id = ?", args: [order.id] },
+      { sql: "DELETE FROM orders WHERE id = ?", args: [order.id] },
+    ],
+    "write"
+  );
+  const total = money(order.total_kobo, order.currency === "USD" ? "USD" : "NGN");
+  await logAdminEvent(
+    admin.name,
+    `Deleted order ${reference} (${order.customer_name}, ${total}, payment ${order.payment_status})`
+  );
+  after(() =>
+    notifyActivity({
+      subject: `Order deleted: ${reference}`,
+      heading: "An order was permanently deleted",
+      details: [
+        ["Order", reference],
+        ["Customer", order.customer_name],
+        ["Total", total],
+        ["Payment status", order.payment_status],
+        ["Deleted by", admin.name],
+      ],
+      actorEmail: admin.email,
+    })
+  );
+  revalidatePath("/knoxx");
+  revalidatePath("/knoxx/orders");
+  redirect("/knoxx/orders");
+}
 
 export async function updateFulfillmentAction(formData: FormData) {
   const admin = await requirePermission("orders.fulfill");
@@ -534,6 +615,103 @@ export async function updateAdminAction(formData: FormData) {
     })
   );
   revalidatePath("/knoxx/team");
+}
+
+export async function updateAdminProfileAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const actor = await requirePermission("admins.manage");
+  const id = Number(formData.get("id"));
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (name.length < 2 || name.length > 100)
+    return { message: "Name must be 2–100 characters.", ok: false };
+  if (!EMAIL_RE.test(email) || email.length > 254)
+    return { message: "Enter a valid email address.", ok: false };
+  const db = await getDb();
+  const targetRs = await db.execute({
+    sql: "SELECT id, name, email FROM admins WHERE id = ?",
+    args: [id],
+  });
+  const target = targetRs.rows[0] as unknown as
+    | { id: number; name: string; email: string }
+    | undefined;
+  if (!target) return { message: "Admin not found.", ok: false };
+  const existing = await getAdminByEmail(email);
+  if (existing && existing.id !== target.id)
+    return { message: "Another admin already uses that email.", ok: false };
+  if (name === target.name && email === target.email)
+    return { message: "No changes to save.", ok: true };
+  await db.execute({
+    sql: "UPDATE admins SET name = ?, email = ? WHERE id = ?",
+    args: [name, email, id],
+  });
+  await logAdminEvent(
+    actor.name,
+    `Updated admin profile ${target.email}: name ${target.name} → ${name}, email ${target.email} → ${email}`
+  );
+  after(() =>
+    notifyActivity({
+      subject: `Admin profile updated: ${email}`,
+      heading: "A team account's profile was updated",
+      details: [
+        ["Changed by", actor.name],
+        ["Name", `${target.name} → ${name}`],
+        ["Email", `${target.email} → ${email}`],
+      ],
+      actorEmail: actor.email,
+    })
+  );
+  revalidatePath("/knoxx/team");
+  return { message: `Profile updated for ${name}.`, ok: true };
+}
+
+export async function deleteAdminAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const actor = await requirePermission("admins.manage");
+  const id = Number(formData.get("id"));
+  const db = await getDb();
+  const targetRs = await db.execute({
+    sql: "SELECT id, name, email, role, active FROM admins WHERE id = ?",
+    args: [id],
+  });
+  const target = targetRs.rows[0] as unknown as
+    | { id: number; name: string; email: string; role: Role; active: number }
+    | undefined;
+  if (!target) return { message: "Admin not found.", ok: false };
+  if (target.id === actor.id)
+    return { message: "You can't delete your own account. Ask another owner to do it.", ok: false };
+  if (target.role === "owner" && target.active === 1 && (await activeOwnerCount(target.id)) === 0)
+    return { message: "You can't delete the last active owner.", ok: false };
+  await db.batch(
+    [
+      { sql: "DELETE FROM password_resets WHERE admin_id = ?", args: [id] },
+      { sql: "DELETE FROM admins WHERE id = ?", args: [id] },
+    ],
+    "write"
+  );
+  await logAdminEvent(
+    actor.name,
+    `Deleted admin ${target.email} (${target.name}, ${ROLE_LABELS[target.role]})`
+  );
+  after(() =>
+    notifyActivity({
+      subject: `Admin account deleted: ${target.email}`,
+      heading: "A team account was deleted",
+      details: [
+        ["Deleted by", actor.name],
+        ["Name", target.name],
+        ["Email", target.email],
+        ["Role", ROLE_LABELS[target.role]],
+      ],
+      actorEmail: actor.email,
+    })
+  );
+  revalidatePath("/knoxx/team");
+  return { message: `${target.name}'s account was deleted.`, ok: true };
 }
 
 export async function resetAdminPasswordAction(

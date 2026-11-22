@@ -9,6 +9,7 @@ import { saveNotesAction, updateFulfillmentAction } from "../../actions";
 import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "../../ui";
 import { btnPrimary, inputClass, labelClass } from "../../styles";
 import { ShippedEmailButton } from "./shipped-button";
+import { DeleteOrderButton } from "../delete-order";
 
 export default function OrderPage({
   params,
@@ -43,6 +44,7 @@ async function OrderDetail({
   const canFulfill = can(admin.role, "orders.fulfill");
   const canNote = can(admin.role, "orders.notes");
   const canEmail = can(admin.role, "email.send");
+  const canDelete = can(admin.role, "orders.delete");
 
   return (
     <AdminShell
@@ -151,6 +153,20 @@ async function OrderDetail({
             <p className="mt-7 text-sm text-ink-soft">
               Your role cannot change fulfillment status.
             </p>
+          )}
+
+          {canDelete && (
+            <div className="mt-7 border-t border-sage/15 pt-5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-red-700">
+                Delete order
+              </h3>
+              <p className="mt-1 text-xs text-ink-soft">
+                Permanently removes this order and its history. This can&apos;t be undone.
+              </p>
+              <div className="mt-3">
+                <DeleteOrderButton reference={order.reference} />
+              </div>
+            </div>
           )}
         </Card>
       </div>

@@ -6,6 +6,7 @@ import { getDb, type Order } from "@/lib/db";
 import { formatDate, naira, PACKAGE_LABELS } from "@/lib/format";
 import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "../ui";
 import { btnOutline } from "../styles";
+import { DeleteOrderButton } from "./delete-order";
 
 export default function OrdersPage() {
   return (
@@ -21,6 +22,7 @@ async function Orders() {
   const orders = (
     await db.execute("SELECT * FROM orders ORDER BY id DESC LIMIT 1000")
   ).rows as unknown as Order[];
+  const canDelete = can(admin.role, "orders.delete");
 
   return (
     <AdminShell
@@ -58,6 +60,7 @@ async function Orders() {
                   <th className="px-4 py-3.5">Total</th>
                   <th className="px-4 py-3.5">Payment</th>
                   <th className="px-4 py-3.5">Fulfillment</th>
+                  {canDelete && <th className="px-4 py-3.5"><span className="sr-only">Delete</span></th>}
                 </tr>
               </thead>
               <tbody>
@@ -90,6 +93,11 @@ async function Orders() {
                     <td className="px-4 py-3.5">
                       <FulfillmentBadge status={o.fulfillment_status} />
                     </td>
+                    {canDelete && (
+                      <td className="px-4 py-3.5">
+                        <DeleteOrderButton reference={o.reference} />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
