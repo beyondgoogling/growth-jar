@@ -1,14 +1,13 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { isValidPasswordResetToken } from "@/lib/admins";
 import { ResetPasswordForm } from "./reset-form";
 
-export default async function ResetPasswordPage({
+export default function ResetPasswordPage({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
-  const token = (await searchParams).token ?? "";
-  const valid = token ? await isValidPasswordResetToken(token) : false;
   return (
     <main className="flex min-h-screen items-center justify-center bg-sage-dark px-6">
       <div className="w-full max-w-md">
@@ -24,28 +23,15 @@ export default async function ResetPasswordPage({
           <h1 className="font-serif text-3xl font-medium text-sage-dark">
             Choose a new password
           </h1>
-          {valid ? (
-            <>
+          <Suspense
+            fallback={
               <p className="mt-2 text-sm text-ink-soft">
-                Pick something at least 10 characters long. This link can only
-                be used once.
+                Checking your reset link…
               </p>
-              <ResetPasswordForm token={token} />
-            </>
-          ) : (
-            <>
-              <p className="mt-2 text-sm text-ink-soft">
-                This reset link is invalid or has expired. Reset links last for
-                1 hour and work only once.
-              </p>
-              <Link
-                href="/knoxx/forgot-password"
-                className="mt-8 block w-full rounded-full bg-sage-dark px-6 py-3.5 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold"
-              >
-                Request a new link
-              </Link>
-            </>
-          )}
+            }
+          >
+            <ResetContent searchParams={searchParams} />
+          </Suspense>
           <Link
             href="/knoxx/login"
             className="mt-6 block text-center text-xs font-semibold uppercase tracking-[0.15em] text-gold hover:text-sage-dark"
@@ -55,5 +41,36 @@ export default async function ResetPasswordPage({
         </div>
       </div>
     </main>
+  );
+}
+
+async function ResetContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>;
+}) {
+  const token = (await searchParams).token ?? "";
+  const valid = token ? await isValidPasswordResetToken(token) : false;
+  return valid ? (
+    <>
+      <p className="mt-2 text-sm text-ink-soft">
+        Pick something at least 10 characters long. This link can only
+        be used once.
+      </p>
+      <ResetPasswordForm token={token} />
+    </>
+  ) : (
+    <>
+      <p className="mt-2 text-sm text-ink-soft">
+        This reset link is invalid or has expired. Reset links last for
+        1 hour and work only once.
+      </p>
+      <Link
+        href="/knoxx/forgot-password"
+        className="mt-8 block w-full rounded-full bg-sage-dark px-6 py-3.5 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold"
+      >
+        Request a new link
+      </Link>
+    </>
   );
 }
