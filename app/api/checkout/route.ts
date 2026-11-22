@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
 import { getDb, getOrderByReference, getSettings, getStateShippingFees, logEvent } from "@/lib/db";
+import { visitorCurrency } from "@/lib/currency";
 import { sendNewOrderPendingAlert } from "@/lib/email";
 import { initializeTransaction, paystackConfigured } from "@/lib/paystack";
 import { validateCheckout } from "@/lib/validation";
@@ -15,6 +16,15 @@ export async function POST(request: Request) {
     return Response.json(
       { error: "Too many attempts. Please wait a minute and try again." },
       { status: 429 }
+    );
+
+  if ((await visitorCurrency()) !== "NGN")
+    return Response.json(
+      {
+        error:
+          "International orders are completed on WhatsApp. Please use the WhatsApp button on the checkout page.",
+      },
+      { status: 403 }
     );
 
   let body: unknown;

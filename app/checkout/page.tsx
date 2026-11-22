@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getSettings, getStateShippingFees } from "@/lib/db";
 import { visitorCurrency } from "@/lib/currency";
 import { CheckoutForm } from "./checkout-form";
+import { WhatsappCheckout } from "./whatsapp-checkout";
 
 export const metadata = {
   title: "Checkout — The Growth Jar Experience",
@@ -27,12 +28,6 @@ export default function CheckoutPage() {
           Back to site
         </Link>
       </div>
-      <h1 className="font-serif text-4xl font-medium text-sage-dark md:text-5xl">
-        Pre-order your Growth Jar
-      </h1>
-      <p className="mt-3 text-ink-soft">
-        Tell us where to send it. Payment is securely handled by Paystack.
-      </p>
       <Suspense
         fallback={<p className="mt-10 text-ink-soft">Loading checkout…</p>}
       >
@@ -50,6 +45,26 @@ async function CheckoutLoader() {
     visitorCurrency(),
   ]);
   return (
-    <CheckoutForm settings={settings} stateFees={stateFees} currency={currency} />
+    <>
+      <h1 className="font-serif text-4xl font-medium text-sage-dark md:text-5xl">
+        Pre-order your Growth Jar
+      </h1>
+      {currency === "USD" ? (
+        <>
+          <p className="mt-3 text-ink-soft">
+            Ordering from outside Nigeria? Choose your package below and
+            complete your pre-order with the creator on WhatsApp.
+          </p>
+          <WhatsappCheckout settings={settings} />
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-ink-soft">
+            Tell us where to send it. Payment is securely handled by Paystack.
+          </p>
+          <CheckoutForm settings={settings} stateFees={stateFees} />
+        </>
+      )}
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Eyebrow, PreorderButton } from "./cta";
+import { InstagramLink } from "./social";
 
 export function Hero() {
   return (
@@ -8,12 +9,18 @@ export function Hero() {
         <span className="whitespace-nowrap font-serif text-lg font-semibold uppercase tracking-[0.12em] text-sage-dark sm:text-xl sm:tracking-[0.15em]">
           The Growth Jar
         </span>
-        <a
-          href="/checkout"
-          className="rounded-full border border-sage-dark px-4 py-2 sm:px-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-dark transition-colors hover:bg-sage-dark hover:text-parchment"
-        >
-          Pre-order
-        </a>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <InstagramLink
+            className="rounded-full p-2 text-sage-dark hover:bg-sage/15 hover:text-gold"
+            iconClassName="h-5 w-5"
+          />
+          <a
+            href="/checkout"
+            className="rounded-full border border-sage-dark px-4 py-2 sm:px-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-dark transition-colors hover:bg-sage-dark hover:text-parchment"
+          >
+            Pre-order
+          </a>
+        </div>
       </header>
 
       <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 pb-20 pt-10 md:grid-cols-2 md:pb-28 md:pt-16">

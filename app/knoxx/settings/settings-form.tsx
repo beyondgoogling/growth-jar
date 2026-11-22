@@ -43,8 +43,8 @@ export function SettingsForm({
         </div>
       ))}
       <p className="text-xs text-ink-soft">
-        Dollar prices are shown to visitors outside Nigeria. Payment is always
-        collected in naira.
+        Dollar prices are shown to visitors outside Nigeria, who complete
+        their pre-order with you on WhatsApp.
       </p>
       {state?.message && (
         <p role="status" className="rounded-xl bg-sage/15 p-3 text-sm text-sage-dark ring-1 ring-sage/30">

@@ -1,4 +1,5 @@
 import { Eyebrow, PreorderButton } from "./cta";
+import { InstagramLink } from "./social";
 
 const faqs = [
   {
@@ -64,8 +65,15 @@ export function Faq() {
         </div>
       </section>
 
-      <footer className="text-balance bg-sage-dark px-6 py-8 text-center text-xs uppercase tracking-[0.25em] text-parchment/70">
-        The Growth Jar Experience · Launching 11 December 2026
+      <footer className="bg-sage-dark px-6 py-10 text-center text-xs uppercase tracking-[0.25em] text-parchment/70">
+        <InstagramLink
+          className="text-parchment/85 hover:text-gold"
+          iconClassName="h-5 w-5"
+          showHandle
+        />
+        <p className="mt-4 text-balance">
+          The Growth Jar Experience · Launching 11 December 2026
+        </p>
       </footer>
     </>
   );

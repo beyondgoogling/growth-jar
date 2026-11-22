@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Settings, StateFee } from "@/lib/db";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
-import { money, naira, PACKAGE_LABELS, type Currency } from "@/lib/format";
+import { naira, PACKAGE_LABELS } from "@/lib/format";
 
 const inputClass =
   "w-full rounded-lg border border-sage/40 bg-parchment px-4 py-3 text-ink outline-none focus:border-sage-deep focus:ring-2 focus:ring-sage/30";
@@ -13,11 +13,9 @@ const labelClass =
 export function CheckoutForm({
   settings,
   stateFees,
-  currency,
 }: {
   settings: Settings;
   stateFees: Record<string, StateFee>;
-  currency: Currency;
 }) {
   const [pkg, setPkg] = useState<"journal" | "complete">("complete");
   const [quantity, setQuantity] = useState(1);
@@ -25,26 +23,13 @@ export function CheckoutForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const prices =
-    currency === "NGN"
-      ? {
-          journal: settings.journalPriceKobo,
-          complete: settings.completePriceKobo,
-        }
-      : {
-          journal: settings.journalPriceUsdCents,
-          complete: settings.completePriceUsdCents,
-        };
+  const prices = {
+    journal: settings.journalPriceKobo,
+    complete: settings.completePriceKobo,
+  };
   const unit = prices[pkg];
-  const fee = stateFees[state];
-  const shipping = fee ? (currency === "NGN" ? fee.kobo : fee.usdCents) : null;
+  const shipping = stateFees[state]?.kobo ?? null;
   const total = unit * quantity + (shipping ?? 0);
-  const ngnTotal =
-    (pkg === "journal"
-      ? settings.journalPriceKobo
-      : settings.completePriceKobo) *
-      quantity +
-    (fee?.kobo ?? 0);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -107,7 +92,7 @@ export function CheckoutForm({
                 {PACKAGE_LABELS[p]}
               </span>
               <span className="mt-1 block text-lg text-gold">
-                {money(prices[p], currency)}
+                {naira(prices[p])}
               </span>
             </label>
           ))}
@@ -238,7 +223,7 @@ export function CheckoutForm({
             role="status"
             className="mt-3 rounded-lg bg-sage/15 p-3 text-sm text-sage-dark ring-1 ring-sage/30"
           >
-            Shipping fee for {state}: <strong>{money(shipping, currency)}</strong>. It has
+            Shipping fee for {state}: <strong>{naira(shipping)}</strong>. It has
             been added to your total below.
           </p>
         ) : (
@@ -257,15 +242,15 @@ export function CheckoutForm({
             <dt className="text-ink-soft">
               {PACKAGE_LABELS[pkg]} × {quantity}
             </dt>
-            <dd>{money(unit * quantity, currency)}</dd>
+            <dd>{naira(unit * quantity)}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-ink-soft">Shipping{state ? ` (${state})` : ""}</dt>
-            <dd>{shipping !== null ? money(shipping, currency) : "Select a state"}</dd>
+            <dd>{shipping !== null ? naira(shipping) : "Select a state"}</dd>
           </div>
           <div className="flex justify-between border-t border-sage/30 pt-3 text-base font-semibold">
             <dt>Total</dt>
-            <dd className="text-gold">{money(total, currency)}</dd>
+            <dd className="text-gold">{naira(total)}</dd>
           </div>
         </dl>
         {error && (
@@ -282,14 +267,8 @@ export function CheckoutForm({
             ? "Opening secure payment…"
             : shipping === null
               ? "Choose your state to continue"
-              : `Pay ${money(total, currency)} with Paystack`}
+              : `Pay ${naira(total)} with Paystack`}
         </button>
-        {currency === "USD" && (
-          <p className="mt-3 text-center text-xs text-ink-soft">
-            USD prices are a guide for international visitors — Paystack will
-            charge {naira(ngnTotal)} at payment.
-          </p>
-        )}
         <p className="mt-3 text-center text-xs text-ink-soft">
           You&apos;ll be redirected to Paystack&apos;s secure checkout. We never
           see or store your card details.

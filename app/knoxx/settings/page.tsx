@@ -43,9 +43,10 @@ async function Settings() {
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
             Set what delivery costs for each state: naira in the left box, US
-            dollars in the right. Customers see the fee as soon as they pick
-            their state at checkout, and it is added to their total. Visitors
-            outside Nigeria see the dollar prices.
+            dollars in the right. Customers in Nigeria see the fee as soon as
+            they pick their state at checkout, and it is added to their total.
+            International visitors order on WhatsApp — use the dollar figures
+            when quoting delivery in chat.
           </p>
           <StateFeesForm
             initialFees={Object.fromEntries(
