@@ -37,16 +37,26 @@ export function Hero() {
             </span>
           </div>
         </div>
-        <Image
-          src="/growth-jar-experience.png"
-          alt="The Growth Jar Experience — sage green guided journal beside a glass jar of folded reflection slips"
-          width={3882}
-          height={4637}
-          priority
-          loading="eager"
-          sizes="(min-width: 768px) 50vw, 100vw"
-          className="h-auto w-full rounded-2xl shadow-xl shadow-sage/20"
-        />
+        <div className="relative">
+          <Image
+            src="/journal-open.jpg"
+            alt="The Growth Jar journal open to the Week 1 page, beside the glass jar of folded reflection slips and a pen"
+            width={1800}
+            height={2400}
+            priority
+            loading="eager"
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="h-auto w-full rounded-2xl shadow-xl shadow-sage/20"
+          />
+          <Image
+            src="/journal-cover.jpg"
+            alt="The sage green Growth Jar journal with gold lettering, its keepsake jar, and a pen on a wooden table"
+            width={1800}
+            height={1350}
+            sizes="(min-width: 768px) 30vw, 60vw"
+            className="absolute -bottom-8 -left-4 w-3/5 rounded-xl border-4 border-cream shadow-lg md:-left-10"
+          />
+        </div>
       </section>
     </>
   );

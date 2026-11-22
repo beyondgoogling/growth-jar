@@ -38,7 +38,10 @@
       "Bash(npx eslint app/knoxx/account app/knoxx/forgot-password 2>&1 | tail -5)",
       "Bash(netstat -ano | grep \":3000\" | grep LISTEN || echo \"port 3000 free\")",
       "Bash",
-      "Bash(rm -f /tmp/knoxx-login.html /tmp/knoxx-headers.txt /tmp/knoxx-result.html)"
+      "Bash(rm -f /tmp/knoxx-login.html /tmp/knoxx-headers.txt /tmp/knoxx-result.html)",
+      "Bash(ls scripts; ls \"/c/Program Files/Google/Chrome/Application/chrome.exe\" 2>/dev/null; ls \"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" 2>/dev/null)",
+      "Read(//c/Program Files/Google/Chrome/Application/**)",
+      "Bash(python - <<'EOF'\nfrom PIL import Image, ImageOps\nimport shutil\njobs = [\n    \\('Materials/IMG_1985.jpg', 'public/journal-cover.jpg', 1800\\),\n    \\('Materials/IMG_1972.jpg', 'public/journal-open.jpg', 1800\\),\n]\nfor src, dst, maxw in jobs:\n    im = ImageOps.exif_transpose\\(Image.open\\(src\\)\\).convert\\('RGB'\\)\n    w, h = im.size\n    if w *)"
     ]
   }
 }
