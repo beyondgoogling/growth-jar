@@ -49,7 +49,7 @@ async function VerifyResult({
   }
 
   if (order.payment_status === "pending" && paystackConfigured()) {
-    const verified = await verifyTransaction(order.reference);
+    const verified = await verifyTransaction(order.paystack_ref ?? order.reference);
     if (
       verified?.status === "success" &&
       verified.amount === order.total_kobo &&
@@ -88,8 +88,9 @@ async function VerifyResult({
       <Card
         tone="error"
         title="Payment didn't go through"
-        body="Your order is saved but the payment failed. You can try again from the checkout page — or contact us if money left your account."
+        body="Your order is saved but the payment failed. You can try again below — or contact us if money left your account."
         reference={order.reference}
+        action={{ href: `/pay/${order.reference}`, label: "Try payment again" }}
       />
     );
   }
@@ -108,11 +109,13 @@ function Card({
   body,
   reference,
   tone = "neutral",
+  action,
 }: {
   title: string;
   body: string;
   reference?: string;
   tone?: "success" | "error" | "neutral";
+  action?: { href: string; label: string };
 }) {
   return (
     <div className="mt-10 rounded-2xl border border-sage/30 bg-parchment p-8">
@@ -133,6 +136,14 @@ function Card({
           Order reference:{" "}
           <span className="font-mono font-semibold text-sage-dark">{reference}</span>
         </p>
+      )}
+      {action && (
+        <Link
+          href={action.href}
+          className="mr-3 mt-6 inline-block rounded-full bg-sage-dark px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-parchment hover:bg-gold"
+        >
+          {action.label}
+        </Link>
       )}
       <Link
         href="/"

@@ -51,8 +51,8 @@ export async function POST(request: Request) {
   const inserted = await db.execute({
     sql: `INSERT INTO orders
         (reference, package, quantity, unit_price_kobo, shipping_kobo, total_kobo,
-         customer_name, email, phone, address_line, city, state)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         customer_name, email, phone, address_line, city, state, paystack_ref)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       reference,
       input.package,
@@ -66,6 +66,7 @@ export async function POST(request: Request) {
       input.addressLine,
       input.city,
       input.state,
+      reference,
     ],
   });
   const orderId = Number(inserted.lastInsertRowid);

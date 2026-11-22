@@ -111,6 +111,16 @@ async function OrderDetail({
               </dd>
             </div>
             {order.paid_at && <Row k="Paid at" v={formatDate(order.paid_at)} />}
+            {(order.reminder_sent_at || order.payment_status === "pending") && (
+              <Row
+                k="Payment reminder"
+                v={
+                  order.reminder_sent_at
+                    ? `Sent ${formatDate(order.reminder_sent_at)}`
+                    : "Not sent yet"
+                }
+              />
+            )}
           </dl>
 
           {canFulfill ? (

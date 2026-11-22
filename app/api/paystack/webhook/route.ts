@@ -1,5 +1,5 @@
 import {
-  getOrderByReference,
+  getOrderByPaystackRef,
   markFailed,
   markPaid,
   type Order,
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const reference = event.data?.reference;
   if (!reference) return new Response("OK");
-  const order = await getOrderByReference(reference);
+  const order = await getOrderByPaystackRef(reference);
   if (!order) return new Response("OK");
 
   // Never trust the webhook payload alone — confirm with Paystack's API.
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     verified.currency === order.currency
   ) {
     if (await markPaid(order.id)) {
-      const paidOrder = (await getOrderByReference(reference)) as Order;
+      const paidOrder = (await getOrderByPaystackRef(reference)) as Order;
       await sendOrderConfirmation(paidOrder);
       await sendAdminNewOrderAlert(paidOrder);
     }

@@ -82,6 +82,13 @@ async function createDb(): Promise<Client> {
       "ALTER TABLE state_shipping_fees ADD COLUMN usd_cents INTEGER NOT NULL DEFAULT 200"
     );
   }
+  const orderCols = await db.execute("PRAGMA table_info(orders)");
+  if (!orderCols.rows.some((r) => r.name === "reminder_sent_at")) {
+    await db.execute("ALTER TABLE orders ADD COLUMN reminder_sent_at TEXT");
+  }
+  if (!orderCols.rows.some((r) => r.name === "paystack_ref")) {
+    await db.execute("ALTER TABLE orders ADD COLUMN paystack_ref TEXT");
+  }
   await db.batch(
     [
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('journal_price_kobo', '1500000')",
@@ -134,6 +141,8 @@ export type Order = {
   paid_at: string | null;
   fulfillment_status: "unfulfilled" | "shipped" | "delivered" | "cancelled";
   notes: string;
+  reminder_sent_at: string | null;
+  paystack_ref: string | null;
 };
 
 export type Settings = {
@@ -246,6 +255,46 @@ export async function getOrderByReference(
     args: [reference],
   });
   return rs.rows[0] as unknown as Order | undefined;
+}
+
+export async function getOrderByPaystackRef(
+  paystackRef: string
+): Promise<Order | undefined> {
+  const db = await getDb();
+  const rs = await db.execute({
+    sql: "SELECT * FROM orders WHERE paystack_ref = ? OR reference = ?",
+    args: [paystackRef, paystackRef],
+  });
+  return rs.rows[0] as unknown as Order | undefined;
+}
+
+export async function setPaystackRef(orderId: number, paystackRef: string) {
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE orders SET paystack_ref = ? WHERE id = ?",
+    args: [paystackRef, orderId],
+  });
+}
+
+export async function getOrdersDueForReminder(): Promise<Order[]> {
+  const db = await getDb();
+  const rs = await db.execute(
+    `SELECT * FROM orders
+     WHERE payment_status = 'pending'
+       AND reminder_sent_at IS NULL
+       AND created_at <= datetime('now', '-24 hours')
+     ORDER BY id LIMIT 50`
+  );
+  return rs.rows as unknown as Order[];
+}
+
+export async function markReminderSent(orderId: number) {
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE orders SET reminder_sent_at = datetime('now') WHERE id = ?",
+    args: [orderId],
+  });
+  await logEvent(orderId, "Payment reminder email sent");
 }
 
 export async function markPaid(orderId: number): Promise<boolean> {

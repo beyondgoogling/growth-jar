@@ -248,6 +248,35 @@ export async function sendPasswordResetEmail(
   }
 }
 
+export async function sendPaymentReminderEmail(
+  order: Order,
+  link: string
+): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  try {
+    await send(
+      order.email,
+      `Your Growth Jar is still waiting (${order.reference})`,
+      layout(
+        "Your Growth Jar is still waiting",
+        `<p>Hi ${escapeHtml(order.customer_name)},</p>
+         <p>You started a pre-order for The Growth Jar Experience but the payment wasn't completed. No money was taken, and your order is still saved:</p>
+         ${orderTable(order)}
+         <p>You can pick up right where you left off — your package, quantity and delivery details are all kept:</p>
+         <p style="margin:24px 0;">
+           <a href="${escapeHtml(link)}" style="display:inline-block;background:#414d38;color:#fbf9f4;padding:12px 28px;border-radius:999px;text-decoration:none;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Complete my payment</a>
+         </p>
+         <p>If you've changed your mind, simply ignore this email — it's the only reminder we'll send, and nothing will be charged.</p>
+         <p style="color:#a8842c;font-style:italic;">Don't just count your blessings. Document your becoming.</p>`
+      )
+    );
+    return true;
+  } catch {
+    await logEvent(order.id, "Payment reminder email failed to send");
+    return false;
+  }
+}
+
 export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
   if (!emailConfigured())
     return { ok: false, error: "SMTP is not configured yet. Add the SMTP values to .env.local first." };
