@@ -28,7 +28,16 @@
       "Bash(sleep 8; curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/knoxx/login --max-time 60)",
       "Bash(tail -40 \"C:\\\\Users\\\\Carolina\\\\AppData\\\\Local\\\\Temp\\\\qwen-code\\\\C--Users-Carolina-Downloads-growth-jar\\\\bc84bba7-0c34-4d6d-ad1d-91eef84287fb\\\\tasks\\\\bak8odfns.output\"; echo ---; ls .next/dev/logs/ 2>/dev/null && tail -20 .next/dev/logs/next-development.log 2>/dev/null)",
       "Bash(curl -s -X POST http://localhost:3000/api/checkout -H \"Content-Type: application/json\" -H \"Origin: http://localhost:3000\" -d '{\"package\":\"journal\",\"quantity\":1,\"customerName\":\"Notify Test\",\"email\":\"notifytest@example.com\",\"phone\":\"08000000000\",\"addressLine\":\"1 Test Street\",\"city\":\"Lagos\",\"state\":\"Lagos\"}' --max-time 60; echo; sleep 6; node -e \"\nconst fs = require\\('fs'\\);\nfor \\(const line of fs.readFileSync\\('.env.local','utf8'\\).split\\(/\\\\r?\\\\n/\\)\\) {\n  const m = line.match\\(/^\\([A-Z_0-9]+\\)=\\(.*\\)$/\\);\n  if \\(m\\) process.env[m[1]] = m[2].replace\\(/^\\\\\"|\\\\\"$/g,''\\);\n}\nfetch\\('https://api.resend.com/emails', { headers: { Authorization: 'Bearer ' + process.env.SMTP_PASS } }\\)\n  .then\\(r => r.json\\(\\)\\)\n  .then\\(d => console.log\\(JSON.stringify\\(\\(d.data||[]\\).slice\\(0,2\\).map\\(e => \\({ to: e.to, subject: e.subject, event: e.last_event }\\)\\), null, 1\\)\\)\\)\n  .catch\\(e => console.error\\('ERR', e.message\\)\\);\n\")",
-      "Bash(npx eslint lib/db.ts lib/email.ts app/knoxx/actions.ts app/knoxx/email/page.tsx app/knoxx/email/email-forms.tsx app/api/checkout/route.ts app/api/paystack/webhook/route.ts 2>&1 | tail -10)"
+      "Bash(npx eslint lib/db.ts lib/email.ts app/knoxx/actions.ts app/knoxx/email/page.tsx app/knoxx/email/email-forms.tsx app/api/checkout/route.ts app/api/paystack/webhook/route.ts 2>&1 | tail -10)",
+      "Bash(ls node_modules/next/dist/docs/ 2>/dev/null | head -50)",
+      "Bash(node -e \"console.log\\(require\\('next/package.json'\\).version\\)\" && ls node_modules/next/dist/docs/01-app && ls node_modules/next/dist/docs/01-app/* 2>/dev/null | head -80)",
+      "Bash(grep -n -i \"deprecat\\\\|breaking\" node_modules/next/dist/docs/01-app/01-getting-started/07-mutating-data.md node_modules/next/dist/docs/01-app/02-guides/forms.md node_modules/next/dist/docs/01-app/02-guides/authentication.md 2>/dev/null | head -20; grep -n \"searchParams\" node_modules/next/dist/docs/01-app/01-getting-started/03-layouts-and-pages.md | head)",
+      "Bash(grep -n \"useActionState\\\\|use server\\\\|after\\(\" node_modules/next/dist/docs/01-app/01-getting-started/07-mutating-data.md | head -20; grep -rn \"useActionState\" node_modules/next/dist/docs/01-app/02-guides/forms.md | head -5)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts\\)\\)\" && npx tsc --noEmit 2>&1 | head -30)",
+      "Bash(npx eslint lib/db.ts lib/admins.ts lib/auth.ts lib/email.ts app/knoxx/actions.ts app/knoxx/ui.tsx app/knoxx/account app/knoxx/forgot-password app/knoxx/reset-password app/knoxx/login/login-form.tsx 2>&1 | tail -20)",
+      "Bash(npx eslint app/knoxx/account app/knoxx/forgot-password 2>&1 | tail -5)",
+      "Bash(netstat -ano | grep \":3000\" | grep LISTEN || echo \"port 3000 free\")",
+      "Bash"
     ]
   }
 }

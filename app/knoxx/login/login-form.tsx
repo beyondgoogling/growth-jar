@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction } from "../actions";
 
@@ -51,6 +52,12 @@ export function LoginForm() {
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>
+      <Link
+        href="/knoxx/forgot-password"
+        className="block text-center text-xs font-semibold uppercase tracking-[0.15em] text-gold hover:text-sage-dark"
+      >
+        Forgot password?
+      </Link>
     </form>
   );
 }

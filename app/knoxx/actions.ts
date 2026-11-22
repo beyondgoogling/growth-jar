@@ -4,12 +4,14 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { createSession, destroySession, requirePermission } from "@/lib/auth";
+import { createSession, destroySession, requireAdmin, requirePermission } from "@/lib/auth";
 import {
   activeOwnerCount,
+  consumePasswordResetToken,
   createAdmin,
+  createPasswordResetToken,
   getAdminByEmail,
-  hashPassword,
+  setAdminPassword,
   verifyPassword,
   ROLE_LABELS,
   type Role,
@@ -24,7 +26,7 @@ import {
   updateSettings,
 } from "@/lib/db";
 import { naira } from "@/lib/format";
-import { notifyActivity, sendShippedNotification, sendTestEmail } from "@/lib/email";
+import { notifyActivity, sendPasswordResetEmail, sendShippedNotification, sendTestEmail } from "@/lib/email";
 
 export async function loginAction(
   _prev: { error: string } | null,
@@ -45,7 +47,7 @@ export async function loginAction(
   if (!admin || !admin.active || !valid)
     return { error: "Incorrect email or password." };
 
-  await createSession(admin.id);
+  await createSession(admin.id, admin.session_epoch);
   await logAdminEvent(admin.name, "Signed in");
   after(() =>
     notifyActivity({
@@ -65,6 +67,120 @@ export async function loginAction(
 export async function logoutAction() {
   await destroySession();
   redirect("/knoxx/login");
+}
+
+export async function changePasswordAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const admin = await requireAdmin();
+  if (!rateLimit(`changepw:${admin.id}`, 10, 15 * 60_000))
+    return { message: "Too many attempts. Try again in 15 minutes.", ok: false };
+
+  const current = String(formData.get("currentPassword") ?? "");
+  const next = String(formData.get("newPassword") ?? "");
+  const confirm = String(formData.get("confirmPassword") ?? "");
+  const full = await getAdminByEmail(admin.email);
+  if (!full || !verifyPassword(current, full.password_hash))
+    return { message: "Your current password is incorrect.", ok: false };
+  if (next.length < 10 || next.length > 200)
+    return { message: "New password must be at least 10 characters.", ok: false };
+  if (next !== confirm)
+    return { message: "New passwords do not match.", ok: false };
+  if (next === current)
+    return { message: "New password must be different from the current one.", ok: false };
+
+  const epoch = await setAdminPassword(admin.id, next);
+  await createSession(admin.id, epoch);
+  await logAdminEvent(admin.name, "Changed own password");
+  after(() =>
+    notifyActivity({
+      subject: `Admin password changed: ${admin.email}`,
+      heading: "An admin changed their password",
+      details: [
+        ["Account", admin.email],
+        ["Name", admin.name],
+      ],
+      actorEmail: admin.email,
+    })
+  );
+  return { message: "Password updated. You're still signed in on this device.", ok: true };
+}
+
+export async function forgotPasswordAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const ip = clientIp(await headers());
+  if (!rateLimit(`forgot:${ip}`, 5, 15 * 60_000))
+    return { message: "Too many attempts. Try again in 15 minutes.", ok: false };
+
+  const generic = {
+    message:
+      "If that email belongs to an admin account, a reset link is on its way. It expires in 1 hour.",
+    ok: true,
+  };
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { message: "Enter a valid email address.", ok: false };
+  const admin = await getAdminByEmail(email);
+  if (!admin || !admin.active) return generic;
+
+  const token = await createPasswordResetToken(admin.id);
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const link = `${proto}://${host}/knoxx/reset-password?token=${token}`;
+  const sent = await sendPasswordResetEmail(admin.email, admin.name, link);
+  if (!sent)
+    await logAdminEvent("System", `Password reset email failed to send for ${admin.email}`);
+  return generic;
+}
+
+export async function resetPasswordWithTokenAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const ip = clientIp(await headers());
+  if (!rateLimit(`resetpw:${ip}`, 10, 15 * 60_000))
+    return { message: "Too many attempts. Try again in 15 minutes.", ok: false };
+
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirmPassword") ?? "");
+  if (password.length < 10 || password.length > 200)
+    return { message: "Password must be at least 10 characters.", ok: false };
+  if (password !== confirm)
+    return { message: "Passwords do not match.", ok: false };
+
+  const adminId = await consumePasswordResetToken(token);
+  if (adminId === null)
+    return {
+      message: "This reset link is invalid or has expired. Request a new one.",
+      ok: false,
+    };
+  const db = await getDb();
+  const rs = await db.execute({
+    sql: "SELECT email, name FROM admins WHERE id = ? AND active = 1",
+    args: [adminId],
+  });
+  const admin = rs.rows[0] as unknown as { email: string; name: string } | undefined;
+  if (!admin)
+    return { message: "This account is no longer active.", ok: false };
+
+  await setAdminPassword(adminId, password);
+  await logAdminEvent(admin.name, "Password reset via email link");
+  after(() =>
+    notifyActivity({
+      subject: `Admin password reset: ${admin.email}`,
+      heading: "An admin password was reset",
+      details: [
+        ["Account", admin.email],
+        ["Method", "Email reset link"],
+      ],
+      actorEmail: admin.email,
+    })
+  );
+  return { message: "Password updated. You can now sign in with it.", ok: true };
 }
 
 const FULFILLMENT_STATUSES = ["unfulfilled", "shipped", "delivered", "cancelled"];
@@ -370,10 +486,8 @@ export async function resetAdminPasswordAction(
   });
   const target = targetRs.rows[0] as unknown as { email: string } | undefined;
   if (!target) return { message: "Admin not found.", ok: false };
-  await db.execute({
-    sql: "UPDATE admins SET password_hash = ? WHERE id = ?",
-    args: [hashPassword(password), id],
-  });
+  const epoch = await setAdminPassword(id, password);
+  if (id === actor.id) await createSession(actor.id, epoch);
   await logAdminEvent(actor.name, `Reset password for ${target.email}`);
   after(() =>
     notifyActivity({

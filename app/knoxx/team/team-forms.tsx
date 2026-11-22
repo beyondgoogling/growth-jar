@@ -45,7 +45,8 @@ export function CreateAdminForm() {
           className={inputClass}
         />
         <p className="mt-1 text-xs text-ink-soft">
-          Share it privately; they can ask you to reset it later.
+          Share it privately; they can change it themselves under Account after
+          signing in.
         </p>
       </div>
       {state?.message && (

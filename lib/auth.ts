@@ -19,10 +19,11 @@ function sign(payload: string): string {
   return createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
 }
 
-export async function createSession(adminId: number) {
+export async function createSession(adminId: number, sessionEpoch: number) {
   const payload = Buffer.from(
     JSON.stringify({
       aid: adminId,
+      ev: sessionEpoch,
       exp: Date.now() + MAX_AGE_SECONDS * 1000,
       n: randomBytes(8).toString("hex"),
     })
@@ -56,7 +57,9 @@ export async function getCurrentAdmin(): Promise<Admin | null> {
     if (typeof data.exp !== "number" || data.exp <= Date.now()) return null;
     if (typeof data.aid !== "number") return null;
     const admin = await getAdminById(data.aid);
-    return admin && admin.active ? admin : null;
+    if (!admin || !admin.active) return null;
+    if (data.ev !== admin.session_epoch) return null;
+    return admin;
   } catch {
     return null;
   }

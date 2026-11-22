@@ -57,7 +57,20 @@ async function createDb(): Promise<Client> {
       actor TEXT NOT NULL,
       event TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id INTEGER NOT NULL REFERENCES admins(id),
+      token_hash TEXT UNIQUE NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT
+    );
   `);
+  const cols = await db.execute("PRAGMA table_info(admins)");
+  if (!cols.rows.some((r) => r.name === "session_epoch")) {
+    await db.execute(
+      "ALTER TABLE admins ADD COLUMN session_epoch INTEGER NOT NULL DEFAULT 0"
+    );
+  }
   await db.batch(
     [
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('journal_price_kobo', '1500000')",

@@ -222,6 +222,32 @@ export async function notifyActivity(opts: {
   }
 }
 
+export async function sendPasswordResetEmail(
+  to: string,
+  name: string,
+  link: string
+): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  try {
+    await send(
+      to,
+      "Reset your Growth Jar admin password",
+      layout(
+        "Reset your password",
+        `<p>Hi ${escapeHtml(name)},</p>
+         <p>We received a request to reset the password for your Growth Jar admin account. Click the button below to choose a new one:</p>
+         <p style="margin:24px 0;">
+           <a href="${escapeHtml(link)}" style="display:inline-block;background:#414d38;color:#fbf9f4;padding:12px 28px;border-radius:999px;text-decoration:none;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Choose a new password</a>
+         </p>
+         <p>This link expires in <strong>1 hour</strong> and can only be used once. If you didn't request a reset, you can safely ignore this email — your password stays the same.</p>`
+      )
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
   if (!emailConfigured())
     return { ok: false, error: "SMTP is not configured yet. Add the SMTP values to .env.local first." };

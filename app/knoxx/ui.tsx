@@ -8,6 +8,7 @@ const NAV = [
   { href: "/knoxx/settings", label: "Prices", icon: "₦", perm: "settings.prices" },
   { href: "/knoxx/email", label: "Email", icon: "✉", perm: "settings.email" },
   { href: "/knoxx/team", label: "Team", icon: "❖", perm: "admins.manage" },
+  { href: "/knoxx/account", label: "Account", icon: "⚙", perm: null },
 ] as const;
 
 export function AdminShell({
