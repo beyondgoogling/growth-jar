@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createSession, destroySession, requirePermission } from "@/lib/auth";
 import {
   activeOwnerCount,
@@ -10,16 +11,20 @@ import {
   getAdminByEmail,
   hashPassword,
   verifyPassword,
+  ROLE_LABELS,
   type Role,
 } from "@/lib/admins";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import {
   getDb,
   getOrderByReference,
+  getSettings,
+  logAdminEvent,
   logEvent,
   updateSettings,
 } from "@/lib/db";
-import { sendShippedNotification, sendTestEmail } from "@/lib/email";
+import { naira } from "@/lib/format";
+import { notifyActivity, sendShippedNotification, sendTestEmail } from "@/lib/email";
 
 export async function loginAction(
   _prev: { error: string } | null,
@@ -41,6 +46,19 @@ export async function loginAction(
     return { error: "Incorrect email or password." };
 
   await createSession(admin.id);
+  await logAdminEvent(admin.name, "Signed in");
+  after(() =>
+    notifyActivity({
+      subject: `Admin sign-in: ${admin.name}`,
+      heading: "An admin signed in",
+      details: [
+        ["Name", admin.name],
+        ["Email", admin.email],
+        ["Role", ROLE_LABELS[admin.role]],
+      ],
+      actorEmail: admin.email,
+    })
+  );
   redirect("/knoxx");
 }
 
@@ -64,6 +82,20 @@ export async function updateFulfillmentAction(formData: FormData) {
     args: [status, order.id],
   });
   await logEvent(order.id, `Fulfillment changed: ${order.fulfillment_status} → ${status} (by ${admin.name})`);
+  after(() =>
+    notifyActivity({
+      subject: `Order ${reference}: marked ${status}`,
+      heading: "Order status changed",
+      details: [
+        ["Order", reference],
+        ["Customer", order.customer_name],
+        ["Changed by", admin.name],
+        ["Status", `${order.fulfillment_status} → ${status}`],
+      ],
+      actorEmail: admin.email,
+      orderId: order.id,
+    })
+  );
   revalidatePath("/knoxx");
   revalidatePath(`/knoxx/orders/${reference}`);
 }
@@ -80,6 +112,19 @@ export async function saveNotesAction(formData: FormData) {
     args: [notes, order.id],
   });
   await logEvent(order.id, `Notes updated (by ${admin.name})`);
+  after(() =>
+    notifyActivity({
+      subject: `Notes updated on ${reference}`,
+      heading: "Order notes updated",
+      details: [
+        ["Order", reference],
+        ["Updated by", admin.name],
+        ["Notes", notes ? (notes.length > 200 ? `${notes.slice(0, 200)}…` : notes) : "(cleared)"],
+      ],
+      actorEmail: admin.email,
+      orderId: order.id,
+    })
+  );
   revalidatePath(`/knoxx/orders/${reference}`);
 }
 
@@ -99,6 +144,21 @@ export async function notifyShippedAction(
   if (order.fulfillment_status !== "shipped" && order.fulfillment_status !== "delivered")
     return { message: "Set the status to Shipped first, then send the email.", ok: false };
   const sent = await sendShippedNotification(order);
+  if (sent) {
+    after(() =>
+      notifyActivity({
+        subject: `Shipped email sent: ${reference}`,
+        heading: "A shipped email went to a customer",
+        details: [
+          ["Order", reference],
+          ["Customer email", order.email],
+          ["Sent by", admin.name],
+        ],
+        actorEmail: admin.email,
+        orderId: order.id,
+      })
+    );
+  }
   revalidatePath(`/knoxx/orders/${reference}`);
   return sent
     ? { message: `Shipped email sent to ${order.email}. (by ${admin.name})`, ok: true }
@@ -113,7 +173,7 @@ export async function saveSettingsAction(
   _prev: { message: string } | null,
   formData: FormData
 ): Promise<{ message: string }> {
-  await requirePermission("settings.prices");
+  const admin = await requirePermission("settings.prices");
   const parse = (key: string): number | null => {
     const n = Number(formData.get(key));
     if (!Number.isFinite(n) || n < 0 || n > 10_000_000) return null;
@@ -124,11 +184,29 @@ export async function saveSettingsAction(
   const shipping = parse("shippingFee");
   if (journal === null || complete === null || shipping === null)
     return { message: "Prices must be numbers between ₦0 and ₦10,000,000." };
+  const old = await getSettings();
   await updateSettings({
     journalPriceKobo: journal,
     completePriceKobo: complete,
     shippingFeeKobo: shipping,
   });
+  await logAdminEvent(
+    admin.name,
+    `Prices updated: journal ${naira(old.journalPriceKobo)} → ${naira(journal)}, complete ${naira(old.completePriceKobo)} → ${naira(complete)}, shipping ${naira(old.shippingFeeKobo)} → ${naira(shipping)}`
+  );
+  after(() =>
+    notifyActivity({
+      subject: "Product prices were changed",
+      heading: "Product prices updated",
+      details: [
+        ["Changed by", admin.name],
+        ["Journal only", `${naira(old.journalPriceKobo)} → ${naira(journal)}`],
+        ["Complete Experience", `${naira(old.completePriceKobo)} → ${naira(complete)}`],
+        ["Shipping fee", `${naira(old.shippingFeeKobo)} → ${naira(shipping)}`],
+      ],
+      actorEmail: admin.email,
+    })
+  );
   revalidatePath("/checkout");
   revalidatePath("/knoxx/settings");
   return { message: "Saved. New prices are live on the checkout page." };
@@ -140,17 +218,45 @@ export async function saveEmailSettingsAction(
   _prev: { message: string; ok: boolean } | null,
   formData: FormData
 ): Promise<{ message: string; ok: boolean }> {
-  await requirePermission("settings.email");
+  const admin = await requirePermission("settings.email");
   const notifyEmail = String(formData.get("notifyEmail") ?? "").trim();
-  if (notifyEmail && (!EMAIL_RE.test(notifyEmail) || notifyEmail.length > 254))
-    return { message: "Enter a valid email address.", ok: false };
+  const notifyEmail2 = String(formData.get("notifyEmail2") ?? "").trim();
+  for (const e of [notifyEmail, notifyEmail2]) {
+    if (e && (!EMAIL_RE.test(e) || e.length > 254))
+      return { message: "Enter valid email addresses.", ok: false };
+  }
   const db = await getDb();
-  await db.execute({
-    sql: "UPDATE settings SET value = ? WHERE key = 'notify_email'",
-    args: [notifyEmail],
-  });
+  await db.batch(
+    [
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = 'notify_email'",
+        args: [notifyEmail],
+      },
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = 'notify_email_2'",
+        args: [notifyEmail2],
+      },
+    ],
+    "write"
+  );
+  await logAdminEvent(
+    admin.name,
+    `Notification emails updated: ${notifyEmail || "(none)"}${notifyEmail2 ? `, ${notifyEmail2}` : ""}`
+  );
+  after(() =>
+    notifyActivity({
+      subject: "Notification settings were changed",
+      heading: "Notification addresses updated",
+      details: [
+        ["Changed by", admin.name],
+        ["Address 1", notifyEmail || "(empty)"],
+        ["Address 2", notifyEmail2 || "(empty)"],
+      ],
+      actorEmail: admin.email,
+    })
+  );
   revalidatePath("/knoxx/email");
-  return { message: "Saved. New paid orders will alert this address.", ok: true };
+  return { message: "Saved. These addresses now receive all activity notifications.", ok: true };
 }
 
 export async function sendTestEmailAction(
@@ -188,6 +294,19 @@ export async function createAdminAction(
     return { message: "An admin with that email already exists.", ok: false };
   await createAdmin({ email, name, role, password });
   await logAdminEvent(actor.name, `Created admin ${email} (${role})`);
+  after(() =>
+    notifyActivity({
+      subject: `New admin account: ${name} (${role})`,
+      heading: "A team account was created",
+      details: [
+        ["Created by", actor.name],
+        ["Name", name],
+        ["Email", email],
+        ["Role", ROLE_LABELS[role]],
+      ],
+      actorEmail: actor.email,
+    })
+  );
   revalidatePath("/knoxx/team");
   return { message: `${name} can now sign in as ${role}.`, ok: true };
 }
@@ -219,6 +338,19 @@ export async function updateAdminAction(formData: FormData) {
     args: [role, active, id],
   });
   await logAdminEvent(actor.name, `Updated admin ${target.email}: role=${role}, active=${active}`);
+  after(() =>
+    notifyActivity({
+      subject: `Admin account changed: ${target.email}`,
+      heading: "A team account was updated",
+      details: [
+        ["Changed by", actor.name],
+        ["Account", target.email],
+        ["Role", `${ROLE_LABELS[target.role]} → ${ROLE_LABELS[role]}`],
+        ["Active", active ? "Yes" : "No"],
+      ],
+      actorEmail: actor.email,
+    })
+  );
   revalidatePath("/knoxx/team");
 }
 
@@ -243,14 +375,17 @@ export async function resetAdminPasswordAction(
     args: [hashPassword(password), id],
   });
   await logAdminEvent(actor.name, `Reset password for ${target.email}`);
+  after(() =>
+    notifyActivity({
+      subject: `Admin password reset: ${target.email}`,
+      heading: "An admin password was reset",
+      details: [
+        ["Reset by", actor.name],
+        ["Account", target.email],
+      ],
+      actorEmail: actor.email,
+    })
+  );
   revalidatePath("/knoxx/team");
   return { message: `Password reset for ${target.email}.`, ok: true };
-}
-
-async function logAdminEvent(actor: string, event: string) {
-  const db = await getDb();
-  await db.execute({
-    sql: "INSERT INTO admin_events (actor, event) VALUES (?, ?)",
-    args: [actor, event],
-  });
 }

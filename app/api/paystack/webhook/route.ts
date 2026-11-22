@@ -5,7 +5,7 @@ import {
   type Order,
 } from "@/lib/db";
 import { validWebhookSignature, verifyTransaction } from "@/lib/paystack";
-import { sendAdminNewOrderAlert, sendOrderConfirmation } from "@/lib/email";
+import { sendAdminNewOrderAlert, sendOrderConfirmation, sendPaymentFailedAlert } from "@/lib/email";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       await sendAdminNewOrderAlert(paidOrder);
     }
   } else if (verified.status === "failed") {
-    await markFailed(order.id);
+    if (await markFailed(order.id)) await sendPaymentFailedAlert(order);
   }
 
   return new Response("OK");

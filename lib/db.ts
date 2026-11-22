@@ -64,6 +64,7 @@ async function createDb(): Promise<Client> {
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('complete_price_kobo', '2500000')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('shipping_fee_kobo', '300000')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email', '')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email_2', '')",
     ],
     "write"
   );
@@ -146,6 +147,27 @@ export async function logEvent(orderId: number, event: string) {
   });
 }
 
+export async function logAdminEvent(actor: string, event: string) {
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT INTO admin_events (actor, event) VALUES (?, ?)",
+    args: [actor, event],
+  });
+}
+
+export async function getNotifyEmails(): Promise<string[]> {
+  const db = await getDb();
+  const rs = await db.execute(
+    "SELECT value FROM settings WHERE key IN ('notify_email', 'notify_email_2') ORDER BY key"
+  );
+  const seen = new Set<string>();
+  for (const row of rs.rows) {
+    const v = String(row.value ?? "").trim();
+    if (v) seen.add(v.toLowerCase());
+  }
+  return [...seen];
+}
+
 export async function getOrderByReference(
   reference: string
 ): Promise<Order | undefined> {
@@ -170,11 +192,15 @@ export async function markPaid(orderId: number): Promise<boolean> {
   return false;
 }
 
-export async function markFailed(orderId: number) {
+export async function markFailed(orderId: number): Promise<boolean> {
   const db = await getDb();
   const res = await db.execute({
     sql: "UPDATE orders SET payment_status = 'failed' WHERE id = ? AND payment_status = 'pending'",
     args: [orderId],
   });
-  if (res.rowsAffected > 0) await logEvent(orderId, "Payment attempt failed");
+  if (res.rowsAffected > 0) {
+    await logEvent(orderId, "Payment attempt failed");
+    return true;
+  }
+  return false;
 }

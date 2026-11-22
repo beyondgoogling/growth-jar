@@ -1,5 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { getDb, getSettings, logEvent } from "@/lib/db";
+import { after } from "next/server";
+import { getDb, getOrderByReference, getSettings, logEvent } from "@/lib/db";
+import { sendNewOrderPendingAlert } from "@/lib/email";
 import { initializeTransaction, paystackConfigured } from "@/lib/paystack";
 import { validateCheckout } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -67,6 +69,10 @@ export async function POST(request: Request) {
   });
   const orderId = Number(inserted.lastInsertRowid);
   await logEvent(orderId, "Order created");
+  after(async () => {
+    const order = await getOrderByReference(reference);
+    if (order) await sendNewOrderPendingAlert(order);
+  });
 
   try {
     const { authorization_url } = await initializeTransaction({

@@ -9,7 +9,26 @@
       "Bash(ls \"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" \"/c/Program Files/Google/Chrome/Application/chrome.exe\" 2>/dev/null)",
       "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)",
       "PowerShell",
-      "Bash(rm -rf .shots)"
+      "Bash(rm -rf .shots)",
+      "Bash(nslookup -type=MX theaklbrand.store 8.8.8.8; nslookup -type=TXT theaklbrand.store 8.8.8.8; nslookup -type=A theaklbrand.store 8.8.8.8)",
+      "Bash(nslookup:*)",
+      "Bash(curl:*)",
+      "Bash(git log --oneline -15 && git status --short | head -20)",
+      "Bash(ls node_modules/next/dist/docs/ 2>/dev/null | head -40; wc -l lib/*.ts app/knoxx/actions.ts app/knoxx/email/*.tsx app/knoxx/settings/*.tsx app/api/checkout/route.ts app/api/paystack/webhook/route.ts)",
+      "Bash(ls node_modules/next/dist/docs/01-app/ && ls node_modules/next/dist/docs/01-app/*guides* 2>/dev/null | head; find node_modules/next/dist/docs -iname \"*updating*\" -o -iname \"*server-action*\" -o -iname \"*mutating*\" | head)",
+      "Bash(ls node_modules/next/dist/docs/01-app/03-api-reference/04-functions/ | grep -i after; head -60 node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md 2>/dev/null)",
+      "Bash(npx tsc --noEmit 2>&1 | head -30)",
+      "Bash(node:*)",
+      "Bash(netstat -ano | grep :3000 | grep LISTEN || echo \"port 3000 free\")",
+      "Bash(mkdir -p /c/Users/Carolina/AppData/Local/Temp/gj-notify-test && node -e \"\nconst fs = require\\('fs'\\);\nfor \\(const line of fs.readFileSync\\('.env.local','utf8'\\).split\\(/\\\\r?\\\\n/\\)\\) {\n  const m = line.match\\(/^\\([A-Z_0-9]+\\)=\\(.*\\)$/\\);\n  if \\(m\\) process.env[m[1]] = m[2].replace\\(/^\\\\\"|\\\\\"$/g,''\\);\n}\nfetch\\('https://api.resend.com/emails', { headers: { Authorization: 'Bearer ' + process.env.SMTP_PASS } }\\)\n  .then\\(r => r.json\\(\\)\\)\n  .then\\(d => {\n    const list = \\(d.data || []\\).slice\\(0, 5\\).map\\(e => \\({ to: e.to, subject: e.subject, created_at: e.created_at, last_event: e.last_event }\\)\\);\n    console.log\\(JSON.stringify\\(list, null, 1\\)\\);\n  }\\)\n  .catch\\(e => console.error\\('ERR', e.message\\)\\);\n\")",
+      "Bash(for i in $\\(seq 1 30\\); do code=$\\(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/knoxx/login --max-time 5\\); if [ \"$code\" = \"200\" ]; then echo \"dev ready \\($code\\)\"; break; fi; sleep 2; done; echo \"last=$code\")",
+      "Bash(netstat -ano | grep :3000 | grep LISTEN || echo \"port free\"; ls .next 2>/dev/null | head -5)",
+      "Bash(rm -rf .next && echo cleared)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --remote-debugging-port=9222 --user-data-dir=\"C:\\\\Users\\\\Carolina\\\\AppData\\\\Local\\\\Temp\\\\gj-notify-test\\\\profile\" --no-first-run --no-default-browser-check --window-size=1440,900 about:blank)",
+      "Bash(sleep 8; curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/knoxx/login --max-time 60)",
+      "Bash(tail -40 \"C:\\\\Users\\\\Carolina\\\\AppData\\\\Local\\\\Temp\\\\qwen-code\\\\C--Users-Carolina-Downloads-growth-jar\\\\bc84bba7-0c34-4d6d-ad1d-91eef84287fb\\\\tasks\\\\bak8odfns.output\"; echo ---; ls .next/dev/logs/ 2>/dev/null && tail -20 .next/dev/logs/next-development.log 2>/dev/null)",
+      "Bash(curl -s -X POST http://localhost:3000/api/checkout -H \"Content-Type: application/json\" -H \"Origin: http://localhost:3000\" -d '{\"package\":\"journal\",\"quantity\":1,\"customerName\":\"Notify Test\",\"email\":\"notifytest@example.com\",\"phone\":\"08000000000\",\"addressLine\":\"1 Test Street\",\"city\":\"Lagos\",\"state\":\"Lagos\"}' --max-time 60; echo; sleep 6; node -e \"\nconst fs = require\\('fs'\\);\nfor \\(const line of fs.readFileSync\\('.env.local','utf8'\\).split\\(/\\\\r?\\\\n/\\)\\) {\n  const m = line.match\\(/^\\([A-Z_0-9]+\\)=\\(.*\\)$/\\);\n  if \\(m\\) process.env[m[1]] = m[2].replace\\(/^\\\\\"|\\\\\"$/g,''\\);\n}\nfetch\\('https://api.resend.com/emails', { headers: { Authorization: 'Bearer ' + process.env.SMTP_PASS } }\\)\n  .then\\(r => r.json\\(\\)\\)\n  .then\\(d => console.log\\(JSON.stringify\\(\\(d.data||[]\\).slice\\(0,2\\).map\\(e => \\({ to: e.to, subject: e.subject, event: e.last_event }\\)\\), null, 1\\)\\)\\)\n  .catch\\(e => console.error\\('ERR', e.message\\)\\);\n\")",
+      "Bash(npx eslint lib/db.ts lib/email.ts app/knoxx/actions.ts app/knoxx/email/page.tsx app/knoxx/email/email-forms.tsx app/api/checkout/route.ts app/api/paystack/webhook/route.ts 2>&1 | tail -10)"
     ]
   }
 }

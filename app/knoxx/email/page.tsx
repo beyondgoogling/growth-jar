@@ -17,9 +17,13 @@ async function EmailSettings() {
   const admin = await requirePermission("settings.email");
   const db = await getDb();
   const rs = await db.execute(
-    "SELECT value FROM settings WHERE key = 'notify_email'"
+    "SELECT key, value FROM settings WHERE key IN ('notify_email', 'notify_email_2')"
   );
-  const row = rs.rows[0] as unknown as { value: string };
+  const map = Object.fromEntries(
+    rs.rows.map((r) => [r.key as string, String(r.value)])
+  );
+  const notifyEmail = map.notify_email ?? "";
+  const notifyEmail2 = map.notify_email_2 ?? "";
   const configured = emailConfigured();
 
   return (
@@ -27,7 +31,7 @@ async function EmailSettings() {
       admin={admin}
       active="email"
       title="Email notifications"
-      subtitle="Order confirmations, new-order alerts, and shipping emails."
+      subtitle="Customer emails and the activity notifications you receive."
     >
       <div className="grid max-w-4xl gap-6 lg:grid-cols-2">
         <Card className="p-7">
@@ -76,19 +80,28 @@ SMTP_FROM="The Growth Jar <orders@yourdomain.com>"`}
 
         <div className="space-y-6">
           <Card className="p-7">
-            <h2 className="font-serif text-xl font-semibold text-sage-dark">
-              New-order alerts
-            </h2>
-            <p className="mt-2 text-sm text-ink-soft">
-              Get an email at this address every time an order is paid.
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-serif text-xl font-semibold text-sage-dark">
+                Activity notifications
+              </h2>
+              <span className="rounded-full bg-gold/15 px-3 py-1 text-xs font-semibold text-gold ring-1 ring-gold/40">
+                Owner only
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              These two addresses get an email for everything that happens: new
+              orders, payments (success or failure), order status changes, notes,
+              shipping emails, price changes, team account changes, and admin
+              sign-ins. Admins are never emailed about their own actions — only
+              what others do.
             </p>
-            <EmailSettingsForm initial={row.value} />
+            <EmailSettingsForm initial={notifyEmail} initial2={notifyEmail2} />
           </Card>
           <Card className="p-7">
             <h2 className="font-serif text-xl font-semibold text-sage-dark">
               Send a test email
             </h2>
-            <TestEmailForm defaultTo={row.value || admin.email} />
+            <TestEmailForm defaultTo={notifyEmail || admin.email} />
           </Card>
         </div>
       </div>

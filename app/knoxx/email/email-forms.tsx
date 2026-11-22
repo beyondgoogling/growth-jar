@@ -20,13 +20,19 @@ function Message({ state }: { state: { message: string; ok: boolean } | null }) 
   );
 }
 
-export function EmailSettingsForm({ initial }: { initial: string }) {
+export function EmailSettingsForm({
+  initial,
+  initial2,
+}: {
+  initial: string;
+  initial2: string;
+}) {
   const [state, action, pending] = useActionState(saveEmailSettingsAction, null);
   return (
     <form action={action} className="mt-4 space-y-4">
       <div>
         <label htmlFor="notifyEmail" className={labelClass}>
-          Alert email address
+          Notification email 1
         </label>
         <input
           id="notifyEmail"
@@ -35,6 +41,20 @@ export function EmailSettingsForm({ initial }: { initial: string }) {
           maxLength={254}
           defaultValue={initial}
           placeholder="you@yourdomain.com"
+          className={inputClass}
+        />
+      </div>
+      <div>
+        <label htmlFor="notifyEmail2" className={labelClass}>
+          Notification email 2 (optional)
+        </label>
+        <input
+          id="notifyEmail2"
+          name="notifyEmail2"
+          type="email"
+          maxLength={254}
+          defaultValue={initial2}
+          placeholder="partner@yourdomain.com"
           className={inputClass}
         />
       </div>

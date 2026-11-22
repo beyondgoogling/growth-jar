@@ -1,6 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
-import { getDb, logEvent, type Order } from "./db";
+import { getNotifyEmails, logAdminEvent, logEvent, type Order } from "./db";
 import { naira, PACKAGE_LABELS } from "./format";
 
 export function emailConfigured(): boolean {
@@ -91,11 +91,7 @@ export async function sendOrderConfirmation(order: Order): Promise<boolean> {
 
 export async function sendAdminNewOrderAlert(order: Order): Promise<boolean> {
   if (!emailConfigured()) return false;
-  const db = await getDb();
-  const rs = await db.execute(
-    "SELECT value FROM settings WHERE key = 'notify_email'"
-  );
-  const to = rs.rows[0]?.value as string | undefined;
+  const to = (await getNotifyEmails()).join(", ");
   if (!to) return false;
   try {
     await send(
@@ -137,6 +133,91 @@ export async function sendShippedNotification(order: Order): Promise<boolean> {
     return true;
   } catch {
     await logEvent(order.id, "Shipped notification email failed to send");
+    return false;
+  }
+}
+
+export async function sendNewOrderPendingAlert(order: Order): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  const to = (await getNotifyEmails()).join(", ");
+  if (!to) return false;
+  try {
+    await send(
+      to,
+      `New order started: ${order.reference} — awaiting payment`,
+      layout(
+        "New order — awaiting payment",
+        `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) just started checkout:</p>
+         ${orderTable(order)}
+         <p><strong>Ship to:</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
+         <p>You'll get another email the moment the payment succeeds.</p>`
+      )
+    );
+    await logEvent(order.id, `New-order alert sent to ${to}`);
+    return true;
+  } catch {
+    await logEvent(order.id, "New-order alert email failed to send");
+    return false;
+  }
+}
+
+export async function sendPaymentFailedAlert(order: Order): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  const to = (await getNotifyEmails()).join(", ");
+  if (!to) return false;
+  try {
+    await send(
+      to,
+      `Payment failed: ${order.reference}`,
+      layout(
+        "A payment attempt failed",
+        `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) tried to pay, but the payment did not go through:</p>
+         ${orderTable(order)}
+         <p>No money was collected. The customer may try again — a new attempt creates a new order reference.</p>`
+      )
+    );
+    await logEvent(order.id, `Payment-failed alert sent to ${to}`);
+    return true;
+  } catch {
+    await logEvent(order.id, "Payment-failed alert email failed to send");
+    return false;
+  }
+}
+
+export async function notifyActivity(opts: {
+  subject: string;
+  heading: string;
+  details: [string, string][];
+  actorEmail?: string;
+  orderId?: number;
+}): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  const actor = opts.actorEmail?.trim().toLowerCase();
+  // Don't email people about their own actions — only what others do.
+  const recipients = (await getNotifyEmails()).filter((e) => e !== actor);
+  if (recipients.length === 0) return false;
+  const to = recipients.join(", ");
+  const rows = opts.details
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:6px 0;color:#6b7060;">${escapeHtml(k)}</td><td style="padding:6px 0;text-align:right;font-weight:bold;">${escapeHtml(v)}</td></tr>`
+    )
+    .join("");
+  try {
+    await send(
+      to,
+      opts.subject,
+      layout(
+        opts.heading,
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;background:#f6f2ea;border-radius:12px;padding:8px 16px;">${rows}</table>
+         <p>Open the admin dashboard for full details.</p>`
+      )
+    );
+    if (opts.orderId) await logEvent(opts.orderId, `Activity alert sent to ${to}`);
+    return true;
+  } catch {
+    if (opts.orderId) await logEvent(opts.orderId, "Activity alert email failed to send");
+    else await logAdminEvent("System", `Notification email failed: ${opts.subject}`);
     return false;
   }
 }
