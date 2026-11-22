@@ -37,7 +37,8 @@
       "Bash(npx eslint lib/db.ts lib/admins.ts lib/auth.ts lib/email.ts app/knoxx/actions.ts app/knoxx/ui.tsx app/knoxx/account app/knoxx/forgot-password app/knoxx/reset-password app/knoxx/login/login-form.tsx 2>&1 | tail -20)",
       "Bash(npx eslint app/knoxx/account app/knoxx/forgot-password 2>&1 | tail -5)",
       "Bash(netstat -ano | grep \":3000\" | grep LISTEN || echo \"port 3000 free\")",
-      "Bash"
+      "Bash",
+      "Bash(rm -f /tmp/knoxx-login.html /tmp/knoxx-headers.txt /tmp/knoxx-result.html)"
     ]
   }
 }
