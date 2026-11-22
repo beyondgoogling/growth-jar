@@ -36,9 +36,9 @@ export function Preorder() {
         </div>
         <Image
           src="/journal-cover.jpg"
-          alt="The complete Growth Jar Experience set — sage green journal, keepsake jar of reflection slips, and a pen"
-          width={1800}
-          height={1350}
+          alt="A woman holding The Growth Jar journal and its keepsake jar of folded reflection slips"
+          width={1350}
+          height={1800}
           sizes="(min-width: 768px) 50vw, 100vw"
           className="h-auto w-full rounded-2xl shadow-xl shadow-sage-dark/30"
         />

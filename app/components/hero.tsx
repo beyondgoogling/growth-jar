@@ -39,18 +39,18 @@ export function Hero() {
         </div>
         <div className="relative">
           <Image
-            src="/journal-open.jpg"
-            alt="The Growth Jar journal open to the Week 1 page, beside the glass jar of folded reflection slips and a pen"
-            width={1800}
-            height={2400}
+            src="/journal-cover.jpg"
+            alt="A woman holding The Growth Jar journal in one hand and its keepsake jar of folded reflection slips in the other"
+            width={1350}
+            height={1800}
             priority
             loading="eager"
             sizes="(min-width: 768px) 50vw, 100vw"
             className="h-auto w-full rounded-2xl shadow-xl shadow-sage/20"
           />
           <Image
-            src="/journal-cover.jpg"
-            alt="The sage green Growth Jar journal with gold lettering, its keepsake jar, and a pen on a wooden table"
+            src="/journal-open.jpg"
+            alt="The Growth Jar journal lying open on a white bed, its sage green cover with gold lettering beside the welcome page"
             width={1800}
             height={1350}
             sizes="(min-width: 768px) 30vw, 60vw"

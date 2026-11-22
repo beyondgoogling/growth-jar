@@ -2,18 +2,18 @@ import { Eyebrow, PreorderButton } from "./cta";
 
 const VOICES = [
   {
-    name: "Carolina",
-    role: "Creator, The Growth Jar Experience",
-    video: "/voice-carolina.mp4",
-    poster: "/voice-carolina-poster.jpg",
-    label: "Video note from Carolina, creator of The Growth Jar Experience",
+    name: "Dami",
+    role: "A Growth Jar customer",
+    video: "/voice-dami.mp4",
+    poster: "/voice-dami-poster.jpg",
+    label: "Video testimonial from Dami, a Growth Jar customer",
   },
   {
-    name: "Sunday",
+    name: "Sarrah",
     role: "A Growth Jar customer",
-    video: "/voice-sunday.mp4",
-    poster: "/voice-sunday-poster.jpg",
-    label: "Video testimonial from Sunday, a Growth Jar customer",
+    video: "/voice-sarrah.mp4",
+    poster: "/voice-sarrah-poster.jpg",
+    label: "Video testimonial from Sarrah, a Growth Jar customer",
   },
 ];
 
@@ -27,8 +27,8 @@ export function Voices() {
             Hear the heart behind the jar.
           </h2>
           <p className="leading-relaxed text-ink-soft">
-            A note from the creator, and a word from someone who has
-            experienced it. Press play.
+            Two customers, two journeys, one jar. Hear what the experience
+            has meant to them. Press play.
           </p>
         </div>
         <div className="mx-auto grid w-full max-w-3xl gap-12 md:grid-cols-2">
