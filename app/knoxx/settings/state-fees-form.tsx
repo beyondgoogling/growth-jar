@@ -7,8 +7,10 @@ import { btnPrimary, inputClass, labelClass } from "../styles";
 
 export function StateFeesForm({
   initialFees,
+  initialUsd,
 }: {
   initialFees: Record<string, number>;
+  initialUsd: Record<string, number>;
 }) {
   const [state, action, pending] = useActionState(saveStateShippingAction, null);
   return (
@@ -17,19 +19,33 @@ export function StateFeesForm({
         {NIGERIAN_STATES.map((s) => (
           <div key={s}>
             <label htmlFor={`fee-${s}`} className={labelClass}>
-              {s} (₦)
+              {s} (₦ / $)
             </label>
-            <input
-              id={`fee-${s}`}
-              name={`fee:${s}`}
-              type="number"
-              min={0}
-              max={10000000}
-              step={100}
-              required
-              defaultValue={initialFees[s]}
-              className={inputClass}
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                id={`fee-${s}`}
+                name={`fee:${s}`}
+                type="number"
+                min={0}
+                max={10000000}
+                step={100}
+                required
+                defaultValue={initialFees[s]}
+                aria-label={`${s} shipping fee in naira`}
+                className={inputClass}
+              />
+              <input
+                name={`usd:${s}`}
+                type="number"
+                min={0}
+                max={100000}
+                step={0.01}
+                required
+                defaultValue={initialUsd[s]}
+                aria-label={`${s} shipping fee in US dollars`}
+                className={inputClass}
+              />
+            </div>
           </div>
         ))}
       </div>

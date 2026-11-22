@@ -26,9 +26,10 @@ import {
   logEvent,
   updateSettings,
   updateStateShippingFees,
+  type StateFee,
 } from "@/lib/db";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
-import { naira } from "@/lib/format";
+import { naira, usd } from "@/lib/format";
 import { notifyActivity, sendPasswordResetEmail, sendShippedNotification, sendTestEmail } from "@/lib/email";
 
 export async function loginAction(
@@ -300,16 +301,25 @@ export async function saveSettingsAction(
   };
   const journal = parse("journalPrice");
   const complete = parse("completePrice");
-  if (journal === null || complete === null)
-    return { message: "Prices must be numbers between ₦0 and ₦10,000,000." };
+  const parseUsd = (key: string): number | null => {
+    const n = Number(formData.get(key));
+    if (!Number.isFinite(n) || n < 0 || n > 100_000) return null;
+    return Math.round(n * 100);
+  };
+  const journalUsd = parseUsd("journalPriceUsd");
+  const completeUsd = parseUsd("completePriceUsd");
+  if (journal === null || complete === null || journalUsd === null || completeUsd === null)
+    return { message: "Prices must be numbers between ₦0 and ₦10,000,000 ($0–$100,000)." };
   const old = await getSettings();
   await updateSettings({
     journalPriceKobo: journal,
     completePriceKobo: complete,
+    journalPriceUsdCents: journalUsd,
+    completePriceUsdCents: completeUsd,
   });
   await logAdminEvent(
     admin.name,
-    `Prices updated: journal ${naira(old.journalPriceKobo)} → ${naira(journal)}, complete ${naira(old.completePriceKobo)} → ${naira(complete)}`
+    `Prices updated: journal ${naira(old.journalPriceKobo)} → ${naira(journal)}, complete ${naira(old.completePriceKobo)} → ${naira(complete)}, USD journal ${usd(old.journalPriceUsdCents)} → ${usd(journalUsd)}, complete ${usd(old.completePriceUsdCents)} → ${usd(completeUsd)}`
   );
   after(() =>
     notifyActivity({
@@ -317,8 +327,8 @@ export async function saveSettingsAction(
       heading: "Product prices updated",
       details: [
         ["Changed by", admin.name],
-        ["Journal only", `${naira(old.journalPriceKobo)} → ${naira(journal)}`],
-        ["Complete Experience", `${naira(old.completePriceKobo)} → ${naira(complete)}`],
+        ["Journal only", `${naira(old.journalPriceKobo)} → ${naira(journal)} (${usd(old.journalPriceUsdCents)} → ${usd(journalUsd)})`],
+        ["Complete Experience", `${naira(old.completePriceKobo)} → ${naira(complete)} (${usd(old.completePriceUsdCents)} → ${usd(completeUsd)})`],
       ],
       actorEmail: admin.email,
     })
@@ -333,24 +343,32 @@ export async function saveStateShippingAction(
   formData: FormData
 ): Promise<{ message: string; ok: boolean }> {
   const admin = await requirePermission("settings.prices");
-  const fees: Record<string, number> = {};
+  const fees: Record<string, StateFee> = {};
   for (const state of NIGERIAN_STATES) {
     const n = Number(formData.get(`fee:${state}`));
     if (!Number.isFinite(n) || n < 0 || n > 10_000_000)
       return {
-        message: `Enter a valid amount (₦0–₦10,000,000) for ${state}.`,
+        message: `Enter a valid amount (₦0–10,000,000) for ${state}.`,
         ok: false,
       };
-    fees[state] = Math.round(n * 100);
+    const d = Number(formData.get(`usd:${state}`));
+    if (!Number.isFinite(d) || d < 0 || d > 100_000)
+      return {
+        message: `Enter a valid dollar amount ($0–$100,000) for ${state}.`,
+        ok: false,
+      };
+    fees[state] = { kobo: Math.round(n * 100), usdCents: Math.round(d * 100) };
   }
   const old = await getStateShippingFees();
-  const changed = NIGERIAN_STATES.filter((s) => old[s] !== fees[s]);
+  const changed = NIGERIAN_STATES.filter(
+    (s) => old[s].kobo !== fees[s].kobo || old[s].usdCents !== fees[s].usdCents
+  );
   if (changed.length === 0)
     return { message: "No changes to save.", ok: true };
   await updateStateShippingFees(fees);
-  const summary = changed
-    .map((s) => `${s} ${naira(old[s])} → ${naira(fees[s])}`)
-    .join("; ");
+  const changeText = (s: string) =>
+    `${s} ${naira(old[s].kobo)} → ${naira(fees[s].kobo)} / ${usd(old[s].usdCents)} → ${usd(fees[s].usdCents)}`;
+  const summary = changed.map(changeText).join("; ");
   await logAdminEvent(admin.name, `State shipping fees updated: ${summary}`);
   after(() =>
     notifyActivity({
@@ -361,7 +379,7 @@ export async function saveStateShippingAction(
         ["States updated", String(changed.length)],
         [
           "Changes",
-          changed.slice(0, 6).map((s) => `${s} ${naira(old[s])} → ${naira(fees[s])}`).join("; ") +
+          changed.slice(0, 6).map(changeText).join("; ") +
             (changed.length > 6 ? `; …and ${changed.length - 6} more` : ""),
         ],
       ],

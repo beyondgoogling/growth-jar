@@ -32,6 +32,8 @@ async function Settings() {
             initial={{
               journalPrice: s.journalPriceKobo / 100,
               completePrice: s.completePriceKobo / 100,
+              journalPriceUsd: s.journalPriceUsdCents / 100,
+              completePriceUsd: s.completePriceUsdCents / 100,
             }}
           />
         </Card>
@@ -40,13 +42,17 @@ async function Settings() {
             Shipping fees by state
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Set what delivery costs for each state. Customers see the fee as
-            soon as they pick their state at checkout, and it is added to their
-            total.
+            Set what delivery costs for each state: naira in the left box, US
+            dollars in the right. Customers see the fee as soon as they pick
+            their state at checkout, and it is added to their total. Visitors
+            outside Nigeria see the dollar prices.
           </p>
           <StateFeesForm
             initialFees={Object.fromEntries(
-              Object.entries(fees).map(([state, kobo]) => [state, kobo / 100])
+              Object.entries(fees).map(([state, f]) => [state, f.kobo / 100])
+            )}
+            initialUsd={Object.fromEntries(
+              Object.entries(fees).map(([state, f]) => [state, f.usdCents / 100])
             )}
           />
         </Card>

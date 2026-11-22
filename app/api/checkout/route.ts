@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     input.package === "journal"
       ? settings.journalPriceKobo
       : settings.completePriceKobo;
-  const shipping = (await getStateShippingFees())[input.state];
+  const shipping = (await getStateShippingFees())[input.state].kobo;
   const total = unitPrice * input.quantity + shipping;
   const reference = `GJ-${randomBytes(6).toString("hex").toUpperCase()}`;
 

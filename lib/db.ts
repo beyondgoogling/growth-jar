@@ -76,10 +76,18 @@ async function createDb(): Promise<Client> {
       "ALTER TABLE admins ADD COLUMN session_epoch INTEGER NOT NULL DEFAULT 0"
     );
   }
+  const feeCols = await db.execute("PRAGMA table_info(state_shipping_fees)");
+  if (!feeCols.rows.some((r) => r.name === "usd_cents")) {
+    await db.execute(
+      "ALTER TABLE state_shipping_fees ADD COLUMN usd_cents INTEGER NOT NULL DEFAULT 200"
+    );
+  }
   await db.batch(
     [
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('journal_price_kobo', '1500000')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('complete_price_kobo', '2500000')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('journal_price_usd_cents', '1000')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('complete_price_usd_cents', '1667')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('shipping_fee_kobo', '300000')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email', '')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email_2', '')",
@@ -131,6 +139,8 @@ export type Order = {
 export type Settings = {
   journalPriceKobo: number;
   completePriceKobo: number;
+  journalPriceUsdCents: number;
+  completePriceUsdCents: number;
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -142,6 +152,8 @@ export async function getSettings(): Promise<Settings> {
   return {
     journalPriceKobo: map.journal_price_kobo,
     completePriceKobo: map.complete_price_kobo,
+    journalPriceUsdCents: map.journal_price_usd_cents,
+    completePriceUsdCents: map.complete_price_usd_cents,
   };
 }
 
@@ -157,27 +169,40 @@ export async function updateSettings(s: Settings) {
         sql: "UPDATE settings SET value = ? WHERE key = ?",
         args: [String(s.completePriceKobo), "complete_price_kobo"],
       },
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [String(s.journalPriceUsdCents), "journal_price_usd_cents"],
+      },
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [String(s.completePriceUsdCents), "complete_price_usd_cents"],
+      },
     ],
     "write"
   );
 }
 
-export async function getStateShippingFees(): Promise<Record<string, number>> {
+export type StateFee = { kobo: number; usdCents: number };
+
+export async function getStateShippingFees(): Promise<Record<string, StateFee>> {
   const db = await getDb();
   const rs = await db.execute(
-    "SELECT state, fee_kobo FROM state_shipping_fees ORDER BY state"
+    "SELECT state, fee_kobo, usd_cents FROM state_shipping_fees ORDER BY state"
   );
   return Object.fromEntries(
-    rs.rows.map((r) => [r.state as string, Number(r.fee_kobo)])
+    rs.rows.map((r) => [
+      r.state as string,
+      { kobo: Number(r.fee_kobo), usdCents: Number(r.usd_cents) },
+    ])
   );
 }
 
-export async function updateStateShippingFees(fees: Record<string, number>) {
+export async function updateStateShippingFees(fees: Record<string, StateFee>) {
   const db = await getDb();
   await db.batch(
     Object.entries(fees).map(([state, fee]) => ({
-      sql: "UPDATE state_shipping_fees SET fee_kobo = ? WHERE state = ?",
-      args: [fee, state],
+      sql: "UPDATE state_shipping_fees SET fee_kobo = ?, usd_cents = ? WHERE state = ?",
+      args: [fee.kobo, fee.usdCents, state],
     })),
     "write"
   );
