@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { getSettings } from "@/lib/db";
+import { getSettings, getStateShippingFees } from "@/lib/db";
 import { CheckoutForm } from "./checkout-form";
 
 export const metadata = {
@@ -43,5 +43,9 @@ export default function CheckoutPage() {
 
 async function CheckoutLoader() {
   await connection();
-  return <CheckoutForm settings={await getSettings()} />;
+  const [settings, stateFees] = await Promise.all([
+    getSettings(),
+    getStateShippingFees(),
+  ]);
+  return <CheckoutForm settings={settings} stateFees={stateFees} />;
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Settings } from "@/lib/db";
+import { NIGERIAN_STATES } from "@/lib/nigeria";
 import { naira, PACKAGE_LABELS } from "@/lib/format";
 
 const inputClass =
@@ -9,15 +10,23 @@ const inputClass =
 const labelClass =
   "mb-1 block text-xs font-semibold uppercase tracking-[0.15em] text-sage-deep";
 
-export function CheckoutForm({ settings }: { settings: Settings }) {
+export function CheckoutForm({
+  settings,
+  stateFees,
+}: {
+  settings: Settings;
+  stateFees: Record<string, number>;
+}) {
   const [pkg, setPkg] = useState<"journal" | "complete">("complete");
   const [quantity, setQuantity] = useState(1);
+  const [state, setState] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const unit =
     pkg === "journal" ? settings.journalPriceKobo : settings.completePriceKobo;
-  const total = unit * quantity + settings.shippingFeeKobo;
+  const shipping = stateFees[state] ?? null;
+  const total = unit * quantity + (shipping ?? 0);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -192,20 +201,37 @@ export function CheckoutForm({ settings }: { settings: Settings }) {
             <label htmlFor="state" className={labelClass}>
               State
             </label>
-            <input
+            <select
               id="state"
               name="state"
               required
-              maxLength={100}
+              value={state}
+              onChange={(e) => setState(e.target.value)}
               autoComplete="address-level1"
               className={inputClass}
-            />
+            >
+              <option value="">Choose your state…</option>
+              {NIGERIAN_STATES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-        <p className="mt-3 text-sm text-ink-soft">
-          Delivery within Nigeria. Shipping is a flat fee of{" "}
-          {naira(settings.shippingFeeKobo)}.
-        </p>
+        {shipping !== null ? (
+          <p
+            role="status"
+            className="mt-3 rounded-lg bg-sage/15 p-3 text-sm text-sage-dark ring-1 ring-sage/30"
+          >
+            Shipping fee for {state}: <strong>{naira(shipping)}</strong>. It has
+            been added to your total below.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-ink-soft">
+            Delivery within Nigeria. Choose your state to see its shipping fee.
+          </p>
+        )}
       </fieldset>
 
       <div className="rounded-2xl border border-sage/30 bg-parchment p-6">
@@ -220,8 +246,8 @@ export function CheckoutForm({ settings }: { settings: Settings }) {
             <dd>{naira(unit * quantity)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-ink-soft">Shipping</dt>
-            <dd>{naira(settings.shippingFeeKobo)}</dd>
+            <dt className="text-ink-soft">Shipping{state ? ` (${state})` : ""}</dt>
+            <dd>{shipping !== null ? naira(shipping) : "Select a state"}</dd>
           </div>
           <div className="flex justify-between border-t border-sage/30 pt-3 text-base font-semibold">
             <dt>Total</dt>
@@ -235,10 +261,14 @@ export function CheckoutForm({ settings }: { settings: Settings }) {
         )}
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || shipping === null}
           className="mt-6 w-full rounded-full bg-sage-dark px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {busy ? "Opening secure payment…" : `Pay ${naira(total)} with Paystack`}
+          {busy
+            ? "Opening secure payment…"
+            : shipping === null
+              ? "Choose your state to continue"
+              : `Pay ${naira(total)} with Paystack`}
         </button>
         <p className="mt-3 text-center text-xs text-ink-soft">
           You&apos;ll be redirected to Paystack&apos;s secure checkout. We never

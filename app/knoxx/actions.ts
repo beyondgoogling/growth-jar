@@ -21,10 +21,13 @@ import {
   getDb,
   getOrderByReference,
   getSettings,
+  getStateShippingFees,
   logAdminEvent,
   logEvent,
   updateSettings,
+  updateStateShippingFees,
 } from "@/lib/db";
+import { NIGERIAN_STATES } from "@/lib/nigeria";
 import { naira } from "@/lib/format";
 import { notifyActivity, sendPasswordResetEmail, sendShippedNotification, sendTestEmail } from "@/lib/email";
 
@@ -297,18 +300,16 @@ export async function saveSettingsAction(
   };
   const journal = parse("journalPrice");
   const complete = parse("completePrice");
-  const shipping = parse("shippingFee");
-  if (journal === null || complete === null || shipping === null)
+  if (journal === null || complete === null)
     return { message: "Prices must be numbers between ₦0 and ₦10,000,000." };
   const old = await getSettings();
   await updateSettings({
     journalPriceKobo: journal,
     completePriceKobo: complete,
-    shippingFeeKobo: shipping,
   });
   await logAdminEvent(
     admin.name,
-    `Prices updated: journal ${naira(old.journalPriceKobo)} → ${naira(journal)}, complete ${naira(old.completePriceKobo)} → ${naira(complete)}, shipping ${naira(old.shippingFeeKobo)} → ${naira(shipping)}`
+    `Prices updated: journal ${naira(old.journalPriceKobo)} → ${naira(journal)}, complete ${naira(old.completePriceKobo)} → ${naira(complete)}`
   );
   after(() =>
     notifyActivity({
@@ -318,7 +319,6 @@ export async function saveSettingsAction(
         ["Changed by", admin.name],
         ["Journal only", `${naira(old.journalPriceKobo)} → ${naira(journal)}`],
         ["Complete Experience", `${naira(old.completePriceKobo)} → ${naira(complete)}`],
-        ["Shipping fee", `${naira(old.shippingFeeKobo)} → ${naira(shipping)}`],
       ],
       actorEmail: admin.email,
     })
@@ -326,6 +326,54 @@ export async function saveSettingsAction(
   revalidatePath("/checkout");
   revalidatePath("/knoxx/settings");
   return { message: "Saved. New prices are live on the checkout page." };
+}
+
+export async function saveStateShippingAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const admin = await requirePermission("settings.prices");
+  const fees: Record<string, number> = {};
+  for (const state of NIGERIAN_STATES) {
+    const n = Number(formData.get(`fee:${state}`));
+    if (!Number.isFinite(n) || n < 0 || n > 10_000_000)
+      return {
+        message: `Enter a valid amount (₦0–₦10,000,000) for ${state}.`,
+        ok: false,
+      };
+    fees[state] = Math.round(n * 100);
+  }
+  const old = await getStateShippingFees();
+  const changed = NIGERIAN_STATES.filter((s) => old[s] !== fees[s]);
+  if (changed.length === 0)
+    return { message: "No changes to save.", ok: true };
+  await updateStateShippingFees(fees);
+  const summary = changed
+    .map((s) => `${s} ${naira(old[s])} → ${naira(fees[s])}`)
+    .join("; ");
+  await logAdminEvent(admin.name, `State shipping fees updated: ${summary}`);
+  after(() =>
+    notifyActivity({
+      subject: "State shipping fees were changed",
+      heading: "Shipping fees updated",
+      details: [
+        ["Changed by", admin.name],
+        ["States updated", String(changed.length)],
+        [
+          "Changes",
+          changed.slice(0, 6).map((s) => `${s} ${naira(old[s])} → ${naira(fees[s])}`).join("; ") +
+            (changed.length > 6 ? `; …and ${changed.length - 6} more` : ""),
+        ],
+      ],
+      actorEmail: admin.email,
+    })
+  );
+  revalidatePath("/checkout");
+  revalidatePath("/knoxx/settings");
+  return {
+    message: `Saved. Shipping fees for ${changed.length} state${changed.length === 1 ? "" : "s"} are live at checkout.`,
+    ok: true,
+  };
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

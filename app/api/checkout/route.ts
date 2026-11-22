@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
-import { getDb, getOrderByReference, getSettings, logEvent } from "@/lib/db";
+import { getDb, getOrderByReference, getSettings, getStateShippingFees, logEvent } from "@/lib/db";
 import { sendNewOrderPendingAlert } from "@/lib/email";
 import { initializeTransaction, paystackConfigured } from "@/lib/paystack";
 import { validateCheckout } from "@/lib/validation";
@@ -43,7 +43,8 @@ export async function POST(request: Request) {
     input.package === "journal"
       ? settings.journalPriceKobo
       : settings.completePriceKobo;
-  const total = unitPrice * input.quantity + settings.shippingFeeKobo;
+  const shipping = (await getStateShippingFees())[input.state];
+  const total = unitPrice * input.quantity + shipping;
   const reference = `GJ-${randomBytes(6).toString("hex").toUpperCase()}`;
 
   const db = await getDb();
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
       input.package,
       input.quantity,
       unitPrice,
-      settings.shippingFeeKobo,
+      shipping,
       total,
       input.customerName,
       input.email,

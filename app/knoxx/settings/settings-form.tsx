@@ -7,13 +7,12 @@ import { btnPrimary, inputClass, labelClass } from "../styles";
 const fields = [
   { name: "journalPrice", label: "Journal only price (₦)" },
   { name: "completePrice", label: "Complete Experience price (₦)" },
-  { name: "shippingFee", label: "Flat shipping fee (₦)" },
 ] as const;
 
 export function SettingsForm({
   initial,
 }: {
-  initial: { journalPrice: number; completePrice: number; shippingFee: number };
+  initial: { journalPrice: number; completePrice: number };
 }) {
   const [state, action, pending] = useActionState(saveSettingsAction, null);
   return (

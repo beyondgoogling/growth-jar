@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { requirePermission } from "@/lib/auth";
-import { getSettings } from "@/lib/db";
+import { getSettings, getStateShippingFees } from "@/lib/db";
 import { AdminShell, Card } from "../ui";
 import { SettingsForm } from "./settings-form";
+import { StateFeesForm } from "./state-fees-form";
 
 export default function SettingsPage() {
   return (
@@ -14,7 +15,7 @@ export default function SettingsPage() {
 
 async function Settings() {
   const admin = await requirePermission("settings.prices");
-  const s = await getSettings();
+  const [s, fees] = await Promise.all([getSettings(), getStateShippingFees()]);
   return (
     <AdminShell
       admin={admin}
@@ -22,15 +23,34 @@ async function Settings() {
       title="Prices & shipping"
       subtitle="Changes go live on the checkout page immediately. Amounts in Naira."
     >
-      <Card className="max-w-xl p-8">
-        <SettingsForm
-          initial={{
-            journalPrice: s.journalPriceKobo / 100,
-            completePrice: s.completePriceKobo / 100,
-            shippingFee: s.shippingFeeKobo / 100,
-          }}
-        />
-      </Card>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="h-fit p-8">
+          <h2 className="font-serif text-xl font-semibold text-sage-dark">
+            Product prices
+          </h2>
+          <SettingsForm
+            initial={{
+              journalPrice: s.journalPriceKobo / 100,
+              completePrice: s.completePriceKobo / 100,
+            }}
+          />
+        </Card>
+        <Card className="p-8 xl:col-span-2">
+          <h2 className="font-serif text-xl font-semibold text-sage-dark">
+            Shipping fees by state
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Set what delivery costs for each state. Customers see the fee as
+            soon as they pick their state at checkout, and it is added to their
+            total.
+          </p>
+          <StateFeesForm
+            initialFees={Object.fromEntries(
+              Object.entries(fees).map(([state, kobo]) => [state, kobo / 100])
+            )}
+          />
+        </Card>
+      </div>
     </AdminShell>
   );
 }

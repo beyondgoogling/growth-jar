@@ -1,3 +1,5 @@
+import { NIGERIAN_STATES } from "./nigeria";
+
 export type CheckoutInput = {
   package: "journal" | "complete";
   quantity: number;
@@ -56,6 +58,9 @@ export function validateCheckout(
       return { ok: false, error: `Please enter a valid ${rule.label.toLowerCase()}.` };
     out[key] = value;
   }
+
+  if (!(NIGERIAN_STATES as readonly string[]).includes(out.state))
+    return { ok: false, error: "Please choose your state from the list." };
 
   return {
     ok: true,

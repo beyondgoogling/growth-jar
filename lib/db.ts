@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, type Client } from "@libsql/client";
+import { NIGERIAN_STATES } from "./nigeria";
 
 const globalForDb = globalThis as unknown as { __gjDb?: Promise<Client> };
 
@@ -64,6 +65,10 @@ async function createDb(): Promise<Client> {
       expires_at TEXT NOT NULL,
       used_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS state_shipping_fees (
+      state TEXT PRIMARY KEY,
+      fee_kobo INTEGER NOT NULL
+    );
   `);
   const cols = await db.execute("PRAGMA table_info(admins)");
   if (!cols.rows.some((r) => r.name === "session_epoch")) {
@@ -79,6 +84,17 @@ async function createDb(): Promise<Client> {
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email', '')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email_2', '')",
     ],
+    "write"
+  );
+  const flatFee = await db.execute(
+    "SELECT value FROM settings WHERE key = 'shipping_fee_kobo'"
+  );
+  const defaultFee = Number(flatFee.rows[0]?.value ?? 300000);
+  await db.batch(
+    NIGERIAN_STATES.map((state) => ({
+      sql: "INSERT OR IGNORE INTO state_shipping_fees (state, fee_kobo) VALUES (?, ?)",
+      args: [state, defaultFee],
+    })),
     "write"
   );
   return db;
@@ -115,7 +131,6 @@ export type Order = {
 export type Settings = {
   journalPriceKobo: number;
   completePriceKobo: number;
-  shippingFeeKobo: number;
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -127,7 +142,6 @@ export async function getSettings(): Promise<Settings> {
   return {
     journalPriceKobo: map.journal_price_kobo,
     completePriceKobo: map.complete_price_kobo,
-    shippingFeeKobo: map.shipping_fee_kobo,
   };
 }
 
@@ -143,11 +157,28 @@ export async function updateSettings(s: Settings) {
         sql: "UPDATE settings SET value = ? WHERE key = ?",
         args: [String(s.completePriceKobo), "complete_price_kobo"],
       },
-      {
-        sql: "UPDATE settings SET value = ? WHERE key = ?",
-        args: [String(s.shippingFeeKobo), "shipping_fee_kobo"],
-      },
     ],
+    "write"
+  );
+}
+
+export async function getStateShippingFees(): Promise<Record<string, number>> {
+  const db = await getDb();
+  const rs = await db.execute(
+    "SELECT state, fee_kobo FROM state_shipping_fees ORDER BY state"
+  );
+  return Object.fromEntries(
+    rs.rows.map((r) => [r.state as string, Number(r.fee_kobo)])
+  );
+}
+
+export async function updateStateShippingFees(fees: Record<string, number>) {
+  const db = await getDb();
+  await db.batch(
+    Object.entries(fees).map(([state, fee]) => ({
+      sql: "UPDATE state_shipping_fees SET fee_kobo = ? WHERE state = ?",
+      args: [fee, state],
+    })),
     "write"
   );
 }
