@@ -17,7 +17,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "The Growth Jar Experience — Document Your Becoming",
   description:
-    "52 weeks. One journal. One jar. A guided gratitude journal and jar journey to help you slow down, reflect, and preserve meaningful memories. Pre-order now — official launch 11 December 2026.",
+    "52 weeks. One journal. One jar. A guided gratitude journal and jar journey to help you slow down, reflect, and preserve meaningful memories. Pre-order now — official launch 12 December 2026.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

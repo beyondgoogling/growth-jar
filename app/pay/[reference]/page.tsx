@@ -61,7 +61,7 @@ async function PayContent({
         <p className="mt-4 leading-relaxed text-ink-soft">
           We&apos;ve received your payment of {naira(order.total_kobo)} for{" "}
           {PACKAGE_LABELS[order.package]} × {order.quantity}. Your Growth Jar
-          will ship after the official launch on 11 December 2026. Keep your
+          will ship after the official launch on 12 December 2026. Keep your
           order reference safe.
         </p>
         <p className="mt-4 text-sm">

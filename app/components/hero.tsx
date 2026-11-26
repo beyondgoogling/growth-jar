@@ -40,7 +40,7 @@ export function Hero() {
           <div className="flex flex-wrap items-center justify-center gap-5 md:justify-start">
             <PreorderButton />
             <span className="text-xs uppercase tracking-[0.2em] text-ink-soft">
-              Official launch · 11 Dec 2026
+              Official launch · 12 Dec 2026
             </span>
           </div>
         </div>

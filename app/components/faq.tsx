@@ -72,7 +72,7 @@ export function Faq() {
           showHandle
         />
         <p className="mt-4 text-balance">
-          The Growth Jar Experience · Launching 11 December 2026
+          The Growth Jar Experience · Launching 12 December 2026
         </p>
       </footer>
     </>

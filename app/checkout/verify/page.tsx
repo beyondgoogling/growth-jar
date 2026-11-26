@@ -77,7 +77,7 @@ async function VerifyResult({
           PACKAGE_LABELS[order.package]
         } × ${order.quantity}. Your Growth Jar will ship to ${order.address_line}, ${
           order.city
-        }, ${order.state} after the official launch on 11 December 2026. Keep your order reference safe.`}
+        }, ${order.state} after the official launch on 12 December 2026. Keep your order reference safe.`}
         reference={order.reference}
       />
     );

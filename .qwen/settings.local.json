@@ -50,7 +50,10 @@
       "WebFetch(paystack.com)",
       "WebFetch(html.duckduckgo.com)",
       "Bash(npm run dev > /tmp/gj-dev.log 2>&1 &\necho \"dev starting\"; sleep 1; echo done)",
-      "Bash(mkdir -p \"/c/Users/Carolina/AppData/Local/Temp/gj-cdp/profile\"\n\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --remote-debugging-port=9222 --user-data-dir=\"C:/Users/Carolina/AppData/Local/Temp/gj-cdp/profile\" --no-first-run --no-default-browser-check --hide-scrollbars --window-size=1280,2200 \"http://localhost:3000\" > /tmp/gj-chrome.log 2>&1 &\nsleep 3; curl -s http://127.0.0.1:9222/json/version | head -c 200; echo)"
+      "Bash(mkdir -p \"/c/Users/Carolina/AppData/Local/Temp/gj-cdp/profile\"\n\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --remote-debugging-port=9222 --user-data-dir=\"C:/Users/Carolina/AppData/Local/Temp/gj-cdp/profile\" --no-first-run --no-default-browser-check --hide-scrollbars --window-size=1280,2200 \"http://localhost:3000\" > /tmp/gj-chrome.log 2>&1 &\nsleep 3; curl -s http://127.0.0.1:9222/json/version | head -c 200; echo)",
+      "Bash(mkdir -p \"/c/Users/Carolina/AppData/Local/Temp/gj-cdp2/profile\"\n\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --remote-debugging-port=9223 --user-data-dir=\"C:/Users/Carolina/AppData/Local/Temp/gj-cdp2/profile\" --no-first-run --no-default-browser-check --hide-scrollbars --window-size=1280,2200 \"http://localhost:3000\" > /tmp/gj-chrome2.log 2>&1 &\nsleep 3; curl -s http://127.0.0.1:9223/json/version | head -c 60; echo)",
+      "Bash(ls -la \"C:/Users/Carolina/AppData/Local/Temp/gj-cdp2/\" 2>/dev/null; echo \"---scripts---\"; ls \"C:/Users/Carolina/AppData/Local/Temp/\" | grep -i cdp)",
+      "Read(//c/Users/Carolina/AppData/Local/Temp/**)"
     ]
   }
 }

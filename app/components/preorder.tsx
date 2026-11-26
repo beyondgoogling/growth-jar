@@ -26,7 +26,7 @@ export function Preorder() {
           </ul>
           <div className="space-y-4">
             <p className="text-xs font-semibold uppercase tracking-[0.25em]">
-              Official launch · 11 December 2026
+              Official launch · 12 December 2026
             </p>
             <PreorderButton light />
             <p className="font-serif text-lg italic text-parchment/85">
@@ -35,8 +35,8 @@ export function Preorder() {
           </div>
         </div>
         <Image
-          src="/journal-cover.jpg"
-          alt="A woman holding The Growth Jar journal and its keepsake jar of folded reflection slips"
+          src="/preorder.jpg"
+          alt="A woman in a green dress reading The Growth Jar journal on a bed, with the keepsake jar of folded reflection slips beside her"
           width={1350}
           height={1800}
           sizes="(min-width: 768px) 50vw, 100vw"

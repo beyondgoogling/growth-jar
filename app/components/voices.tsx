@@ -2,18 +2,16 @@ import { Eyebrow, PreorderButton } from "./cta";
 
 const VOICES = [
   {
-    name: "Dami",
-    role: "A Growth Jar customer",
+    name: "Naomi",
     video: "/voice-dami.mp4",
     poster: "/voice-dami-poster.jpg",
-    label: "Video testimonial from Dami, a Growth Jar customer",
+    label: "Video testimonial from Naomi",
   },
   {
-    name: "Sarrah",
-    role: "A Growth Jar customer",
+    name: "Toria",
     video: "/voice-sarrah.mp4",
     poster: "/voice-sarrah-poster.jpg",
-    label: "Video testimonial from Sarrah, a Growth Jar customer",
+    label: "Video testimonial from Toria",
   },
 ];
 
@@ -27,8 +25,8 @@ export function Voices() {
             Hear the heart behind the jar.
           </h2>
           <p className="leading-relaxed text-ink-soft">
-            Two customers, two journeys, one jar. Hear what the experience
-            has meant to them. Press play.
+            Two journeys, one jar. Hear what the experience has meant to
+            them. Press play.
           </p>
         </div>
         <div className="mx-auto grid w-full max-w-3xl gap-12 md:grid-cols-2">
@@ -47,12 +45,9 @@ export function Voices() {
                 <source src={voice.video} type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
-              <figcaption className="space-y-1 text-center">
+              <figcaption className="text-center">
                 <p className="font-serif text-2xl font-medium text-sage-dark">
                   {voice.name}
-                </p>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink-soft">
-                  {voice.role}
                 </p>
               </figcaption>
             </figure>

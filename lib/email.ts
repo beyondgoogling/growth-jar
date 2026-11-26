@@ -74,7 +74,7 @@ export async function sendOrderConfirmation(order: Order): Promise<boolean> {
       layout(
         "Thank you — your pre-order is confirmed!",
         `<p>Hi ${escapeHtml(order.customer_name)},</p>
-         <p>We've received your payment. Your Growth Jar Experience is reserved and will ship to you after the official launch on <strong>11 December 2026</strong>.</p>
+         <p>We've received your payment. Your Growth Jar Experience is reserved and will ship to you after the official launch on <strong>12 December 2026</strong>.</p>
          ${orderTable(order)}
          <p><strong>Shipping to:</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</p>
          <p>We'll email you again the moment your order ships. Keep your order reference safe.</p>
