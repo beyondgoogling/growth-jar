@@ -5,7 +5,7 @@ const BASE = "https://api.paystack.co";
 
 export function paystackConfigured(): boolean {
   const key = process.env.PAYSTACK_SECRET_KEY ?? "";
-  return key.startsWith("sk_") && !key.includes("REPLACE");
+  return (key.startsWith("sk_") || key.startsWith("rk_")) && !key.includes("REPLACE");
 }
 
 function secretKey(): string {
@@ -70,7 +70,9 @@ export function validWebhookSignature(
   signature: string | null
 ): boolean {
   if (!signature) return false;
-  const expected = createHmac("sha512", secretKey()).update(rawBody).digest("hex");
+  // Paystack signs webhooks with the secret key, even when API calls use a restricted key.
+  const key = process.env.PAYSTACK_WEBHOOK_SECRET || secretKey();
+  const expected = createHmac("sha512", key).update(rawBody).digest("hex");
   const a = Buffer.from(expected);
   const b = Buffer.from(signature);
   return a.length === b.length && timingSafeEqual(a, b);
