@@ -20,6 +20,13 @@ function fromAddress(): string {
   return process.env.SMTP_FROM || process.env.SMTP_USER || "";
 }
 
+export function siteUrl(): string {
+  if (process.env.SITE_URL) return process.env.SITE_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL)
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return "http://localhost:3000";
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -124,21 +131,35 @@ export async function sendAdminNewOrderAlert(order: Order): Promise<boolean> {
 
 export async function sendShippedNotification(order: Order): Promise<boolean> {
   if (!emailConfigured()) return false;
+  const pickup = order.delivery_method === "pickup";
   try {
     await send(
       order.email,
-      `Your Growth Jar is on its way! (${order.reference})`,
+      pickup
+        ? `Your Growth Jar is ready for pick up! (${order.reference})`
+        : `Your Growth Jar is on its way! (${order.reference})`,
       layout(
-        "Your Growth Jar has shipped!",
-        `<p>Hi ${escapeHtml(order.customer_name)},</p>
-         <p>Good news — your order is on its way to:</p>
-         <p><strong>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</strong></p>
-         ${orderTable(order)}
-         <p>Soon you'll be holding 52 weeks of becoming in your hands. We can't wait for you to begin.</p>
-         <p style="color:#a8842c;font-style:italic;">Write it. Tear it. Save it. One week at a time.</p>`
+        pickup ? "Your Growth Jar is ready for pick up!" : "Your Growth Jar has shipped!",
+        pickup
+          ? `<p>Hi ${escapeHtml(order.customer_name)},</p>
+             <p>Good news — your Growth Jar is ready for collection. Our sales representative will reach out to confirm your pick-up time and place.</p>
+             ${orderTable(order)}
+             <p>Keep your order reference safe — you'll need it at collection.</p>
+             <p style="color:#a8842c;font-style:italic;">Write it. Tear it. Save it. One week at a time.</p>`
+          : `<p>Hi ${escapeHtml(order.customer_name)},</p>
+             <p>Good news — your order is on its way to:</p>
+             <p><strong>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</strong></p>
+             ${orderTable(order)}
+             <p>Soon you'll be holding 52 weeks of becoming in your hands. We can't wait for you to begin.</p>
+             <p style="color:#a8842c;font-style:italic;">Write it. Tear it. Save it. One week at a time.</p>`
       )
     );
-    await logEvent(order.id, `Shipped notification emailed to ${order.email}`);
+    await logEvent(
+      order.id,
+      pickup
+        ? `Pick-up ready notification emailed to ${order.email}`
+        : `Shipped notification emailed to ${order.email}`
+    );
     return true;
   } catch {
     await logEvent(order.id, "Shipped notification email failed to send");
@@ -189,6 +210,39 @@ export async function sendPaymentFailedAlert(order: Order): Promise<boolean> {
     return true;
   } catch {
     await logEvent(order.id, "Payment-failed alert email failed to send");
+    return false;
+  }
+}
+
+export async function sendPaymentFailedCustomerEmail(
+  order: Order,
+  link: string
+): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  try {
+    await send(
+      order.email,
+      `Your Growth Jar payment didn't go through (${order.reference})`,
+      layout(
+        "Your payment didn't go through",
+        `<p>Hi ${escapeHtml(order.customer_name)},</p>
+         <p>Your recent payment attempt for The Growth Jar Experience didn't go through. <strong>No money was taken.</strong> Your order is saved exactly as you left it:</p>
+         ${orderTable(order)}
+         ${
+           order.delivery_method === "pickup"
+             ? "<p>You chose pick up — no shipping fee applies, and our sales representative will arrange your collection once payment is confirmed.</p>"
+             : "<p>Your Growth Jar will ship to your address after the official launch on 12 December 2026.</p>"
+         }
+         <p style="margin:24px 0;">
+           <a href="${escapeHtml(link)}" style="display:inline-block;background:#414d38;color:#fbf9f4;padding:12px 28px;border-radius:999px;text-decoration:none;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Try my payment again</a>
+         </p>
+         <p>If you've changed your mind, simply ignore this email — nothing will be charged.</p>`
+      )
+    );
+    await logEvent(order.id, `Payment-failed email sent to ${order.email}`);
+    return true;
+  } catch {
+    await logEvent(order.id, "Payment-failed customer email failed to send");
     return false;
   }
 }
@@ -271,7 +325,11 @@ export async function sendPaymentReminderEmail(
         `<p>Hi ${escapeHtml(order.customer_name)},</p>
          <p>You started a pre-order for The Growth Jar Experience but the payment wasn't completed. No money was taken, and your order is still saved:</p>
          ${orderTable(order)}
-         <p>You can pick up right where you left off — your package, quantity and delivery details are all kept:</p>
+         ${
+           order.delivery_method === "pickup"
+             ? "<p>You can pick up right where you left off — your package, quantity and pick-up choice are all kept. Pick up carries no shipping fee, and once payment is confirmed our sales representative will arrange your collection.</p>"
+             : "<p>You can pick up right where you left off — your package, quantity and delivery details are all kept. Your Growth Jar will ship to you after the official launch on 12 December 2026.</p>"
+         }
          <p style="margin:24px 0;">
            <a href="${escapeHtml(link)}" style="display:inline-block;background:#414d38;color:#fbf9f4;padding:12px 28px;border-radius:999px;text-decoration:none;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Complete my payment</a>
          </p>

@@ -95,6 +95,7 @@ async function OrderDetail({
             <div className="mt-6 border-t border-sage/15 pt-5">
               <ShippedEmailButton
                 reference={order.reference}
+                pickup={order.delivery_method === "pickup"}
                 eligible={
                   order.payment_status === "paid" &&
                   (order.fulfillment_status === "shipped" ||

@@ -2,7 +2,12 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { getOrderByReference, markFailed, markPaid } from "@/lib/db";
 import { paystackConfigured, verifyTransaction } from "@/lib/paystack";
-import { sendAdminNewOrderAlert, sendOrderConfirmation } from "@/lib/email";
+import {
+  sendAdminNewOrderAlert,
+  sendOrderConfirmation,
+  sendPaymentFailedCustomerEmail,
+  siteUrl,
+} from "@/lib/email";
 import { naira, PACKAGE_LABELS } from "@/lib/format";
 
 export const metadata = {
@@ -63,7 +68,11 @@ async function VerifyResult({
         order.payment_status = "paid";
       }
     } else if (verified?.status === "failed") {
-      await markFailed(order.id);
+      if (await markFailed(order.id))
+        await sendPaymentFailedCustomerEmail(
+          order,
+          `${siteUrl()}/pay/${order.reference}`
+        );
       order.payment_status = "failed";
     }
   }

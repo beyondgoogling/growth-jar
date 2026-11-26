@@ -341,16 +341,29 @@ export async function notifyShippedAction(
   const reference = String(formData.get("reference") ?? "");
   const order = await getOrderByReference(reference);
   if (!order) return { message: "Order not found.", ok: false };
+  const pickup = order.delivery_method === "pickup";
   if (order.payment_status !== "paid")
-    return { message: "Only paid orders can be marked as shipped to the customer.", ok: false };
+    return {
+      message: pickup
+        ? "Only paid orders can get the pick-up ready email."
+        : "Only paid orders can be marked as shipped to the customer.",
+      ok: false,
+    };
   if (order.fulfillment_status !== "shipped" && order.fulfillment_status !== "delivered")
-    return { message: "Set the status to Shipped first, then send the email.", ok: false };
+    return {
+      message: pickup
+        ? "Set the status to Shipped (ready for pick up) first, then send the email."
+        : "Set the status to Shipped first, then send the email.",
+      ok: false,
+    };
   const sent = await sendShippedNotification(order);
   if (sent) {
     after(() =>
       notifyActivity({
-        subject: `Shipped email sent: ${reference}`,
-        heading: "A shipped email went to a customer",
+        subject: `${pickup ? "Pick-up ready" : "Shipped"} email sent: ${reference}`,
+        heading: pickup
+          ? "A pick-up ready email went to a customer"
+          : "A shipped email went to a customer",
         details: [
           ["Order", reference],
           ["Customer email", order.email],
@@ -363,7 +376,10 @@ export async function notifyShippedAction(
   }
   revalidatePath(`/knoxx/orders/${reference}`);
   return sent
-    ? { message: `Shipped email sent to ${order.email}. (by ${admin.name})`, ok: true }
+    ? {
+        message: `${pickup ? "Pick-up ready" : "Shipped"} email sent to ${order.email}. (by ${admin.name})`,
+        ok: true,
+      }
     : {
         message:
           "Email could not be sent. Check the SMTP settings in .env.local and the order history for details.",

@@ -5,7 +5,13 @@ import {
   type Order,
 } from "@/lib/db";
 import { validWebhookSignature, verifyTransaction } from "@/lib/paystack";
-import { sendAdminNewOrderAlert, sendOrderConfirmation, sendPaymentFailedAlert } from "@/lib/email";
+import {
+  sendAdminNewOrderAlert,
+  sendOrderConfirmation,
+  sendPaymentFailedAlert,
+  sendPaymentFailedCustomerEmail,
+  siteUrl,
+} from "@/lib/email";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -42,7 +48,13 @@ export async function POST(request: Request) {
       await sendAdminNewOrderAlert(paidOrder);
     }
   } else if (verified.status === "failed") {
-    if (await markFailed(order.id)) await sendPaymentFailedAlert(order);
+    if (await markFailed(order.id)) {
+      await sendPaymentFailedAlert(order);
+      await sendPaymentFailedCustomerEmail(
+        order,
+        `${siteUrl()}/pay/${order.reference}`
+      );
+    }
   }
 
   return new Response("OK");
