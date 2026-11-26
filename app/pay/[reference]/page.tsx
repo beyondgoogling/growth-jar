@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { getOrderByReference } from "@/lib/db";
-import { naira, PACKAGE_LABELS } from "@/lib/format";
+import { naira, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
 import { ResumeButton } from "./resume-button";
 
 export const metadata = {
@@ -60,9 +60,11 @@ async function PayContent({
         </h1>
         <p className="mt-4 leading-relaxed text-ink-soft">
           We&apos;ve received your payment of {naira(order.total_kobo)} for{" "}
-          {PACKAGE_LABELS[order.package]} × {order.quantity}. Your Growth Jar
-          will ship after the official launch on 12 December 2026. Keep your
-          order reference safe.
+          {PACKAGE_LABELS[order.package]} × {order.quantity}.{" "}
+          {order.delivery_method === "pickup"
+            ? "You chose pick up — a sales representative will reach out to you shortly to help arrange your collection."
+            : "Your Growth Jar will ship after the official launch on 12 December 2026."}{" "}
+          Keep your order reference safe.
         </p>
         <p className="mt-4 text-sm">
           Order reference:{" "}
@@ -98,8 +100,18 @@ async function PayContent({
           </dd>
         </div>
         <div className="flex justify-between gap-4">
+          <dt className="text-ink-soft">Delivery</dt>
+          <dd className="font-medium">
+            {DELIVERY_LABELS[order.delivery_method]}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-4">
           <dt className="text-ink-soft">Shipping</dt>
-          <dd className="font-medium">{naira(order.shipping_kobo)}</dd>
+          <dd className="font-medium">
+            {order.delivery_method === "pickup"
+              ? "No fee (pick up)"
+              : naira(order.shipping_kobo)}
+          </dd>
         </div>
         <div className="flex justify-between gap-4 border-t border-sage/15 pt-3">
           <dt className="font-semibold">Total</dt>
@@ -110,7 +122,7 @@ async function PayContent({
       </dl>
       <div className="mt-6 rounded-xl bg-cream p-5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-deep">
-          Ship to
+          {order.delivery_method === "pickup" ? "Your address (pick up)" : "Ship to"}
         </h2>
         <p className="mt-2 text-sm leading-relaxed">
           {order.address_line}

@@ -4,6 +4,7 @@ import { getSettings, getStateShippingFees } from "@/lib/db";
 import { AdminShell, Card } from "../ui";
 import { SettingsForm } from "./settings-form";
 import { StateFeesForm } from "./state-fees-form";
+import { DeliveryOptionsForm } from "./delivery-options-form";
 
 export default function SettingsPage() {
   return (
@@ -23,7 +24,7 @@ async function Settings() {
       title="Prices & shipping"
       subtitle="Changes go live on the checkout page immediately. Amounts in Naira."
     >
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Card className="h-fit p-8">
           <h2 className="font-serif text-xl font-semibold text-sage-dark">
             Product prices
@@ -37,10 +38,34 @@ async function Settings() {
             }}
           />
         </Card>
-        <Card className="p-8 xl:col-span-2">
+        <Card className="h-fit p-8">
+          <h2 className="font-serif text-xl font-semibold text-sage-dark">
+            Delivery options
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Choose what customers can pick at checkout, and whether state
+            shipping fees are charged.
+          </p>
+          <DeliveryOptionsForm
+            initial={{
+              pickupEnabled: s.pickupEnabled,
+              deliveryEnabled: s.deliveryEnabled,
+              shippingFeesEnabled: s.shippingFeesEnabled,
+            }}
+          />
+        </Card>
+      </div>
+      <Card className="mt-6 p-8">
           <h2 className="font-serif text-xl font-semibold text-sage-dark">
             Shipping fees by state
           </h2>
+          {!s.shippingFeesEnabled && (
+            <p className="mt-2 rounded-xl bg-gold/15 p-3 text-sm text-sage-dark ring-1 ring-gold/40">
+              Shipping fees are currently switched OFF: customers see the
+              states without prices and no shipping fee is added at checkout.
+              The amounts below are kept for when you switch fees back on.
+            </p>
+          )}
           <p className="mt-1 text-sm text-ink-soft">
             Set what delivery costs for each state: naira in the left box, US
             dollars in the right. Customers in Nigeria see the fee as soon as
@@ -56,8 +81,7 @@ async function Settings() {
               Object.entries(fees).map(([state, f]) => [state, f.usdCents / 100])
             )}
           />
-        </Card>
-      </div>
+      </Card>
     </AdminShell>
   );
 }

@@ -24,6 +24,7 @@ import {
   getStateShippingFees,
   logAdminEvent,
   logEvent,
+  updateDeliveryOptions,
   updateSettings,
   updateStateShippingFees,
   type StateFee,
@@ -471,6 +472,57 @@ export async function saveStateShippingAction(
   revalidatePath("/knoxx/settings");
   return {
     message: `Saved. Shipping fees for ${changed.length} state${changed.length === 1 ? "" : "s"} are live at checkout.`,
+    ok: true,
+  };
+}
+
+export async function saveDeliveryOptionsAction(
+  _prev: { message: string; ok: boolean } | null,
+  formData: FormData
+): Promise<{ message: string; ok: boolean }> {
+  const admin = await requirePermission("settings.prices");
+  const pickupEnabled = formData.get("pickupEnabled") === "on";
+  const deliveryEnabled = formData.get("deliveryEnabled") === "on";
+  const shippingFeesEnabled = formData.get("shippingFeesEnabled") === "on";
+  if (!pickupEnabled && !deliveryEnabled)
+    return {
+      message: "Keep at least one delivery option switched on.",
+      ok: false,
+    };
+  const old = await getSettings();
+  if (
+    old.pickupEnabled === pickupEnabled &&
+    old.deliveryEnabled === deliveryEnabled &&
+    old.shippingFeesEnabled === shippingFeesEnabled
+  )
+    return { message: "No changes to save.", ok: true };
+  await updateDeliveryOptions({
+    shippingFeesEnabled,
+    pickupEnabled,
+    deliveryEnabled,
+  });
+  const onOff = (b: boolean) => (b ? "on" : "off");
+  await logAdminEvent(
+    admin.name,
+    `Delivery options updated: pick up ${onOff(old.pickupEnabled)} → ${onOff(pickupEnabled)}, home delivery ${onOff(old.deliveryEnabled)} → ${onOff(deliveryEnabled)}, state shipping fees ${onOff(old.shippingFeesEnabled)} → ${onOff(shippingFeesEnabled)}`
+  );
+  after(() =>
+    notifyActivity({
+      subject: "Delivery options were changed",
+      heading: "Delivery options updated",
+      details: [
+        ["Changed by", admin.name],
+        ["Pick up", `${onOff(old.pickupEnabled)} → ${onOff(pickupEnabled)}`],
+        ["Home delivery", `${onOff(old.deliveryEnabled)} → ${onOff(deliveryEnabled)}`],
+        ["State shipping fees", `${onOff(old.shippingFeesEnabled)} → ${onOff(shippingFeesEnabled)}`],
+      ],
+      actorEmail: admin.email,
+    })
+  );
+  revalidatePath("/checkout");
+  revalidatePath("/knoxx/settings");
+  return {
+    message: "Saved. Checkout now reflects these delivery options.",
     ok: true,
   };
 }

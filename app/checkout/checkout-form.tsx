@@ -3,12 +3,17 @@
 import { useState } from "react";
 import type { Settings, StateFee } from "@/lib/db";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
-import { naira, PACKAGE_LABELS } from "@/lib/format";
+import { naira, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
 
 const inputClass =
   "w-full rounded-lg border border-sage/40 bg-parchment px-4 py-3 text-ink outline-none focus:border-sage-deep focus:ring-2 focus:ring-sage/30";
 const labelClass =
   "mb-1 block text-xs font-semibold uppercase tracking-[0.15em] text-sage-deep";
+
+const METHOD_NOTES = {
+  delivery: "We ship to your address after the official launch.",
+  pickup: "Collect in person. No shipping fee.",
+} as const;
 
 export function CheckoutForm({
   settings,
@@ -18,6 +23,9 @@ export function CheckoutForm({
   stateFees: Record<string, StateFee>;
 }) {
   const [pkg, setPkg] = useState<"journal" | "complete">("complete");
+  const [method, setMethod] = useState<"pickup" | "delivery">(
+    settings.deliveryEnabled ? "delivery" : "pickup"
+  );
   const [quantity, setQuantity] = useState(1);
   const [state, setState] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,8 +36,13 @@ export function CheckoutForm({
     complete: settings.completePriceKobo,
   };
   const unit = prices[pkg];
-  const shipping = stateFees[state]?.kobo ?? null;
+  const feesOn = settings.shippingFeesEnabled;
+  const shipping =
+    method === "delivery" && feesOn ? (stateFees[state]?.kobo ?? null) : 0;
   const total = unit * quantity + (shipping ?? 0);
+  const methods = (["delivery", "pickup"] as const).filter((m) =>
+    m === "delivery" ? settings.deliveryEnabled : settings.pickupEnabled
+  );
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,6 +55,7 @@ export function CheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           package: pkg,
+          deliveryMethod: method,
           quantity,
           customerName: data.get("customerName"),
           email: data.get("email"),
@@ -118,7 +132,40 @@ export function CheckoutForm({
 
       <fieldset>
         <legend className="mb-4 font-serif text-2xl font-semibold text-sage-dark">
-          2. Your details
+          2. How would you like to receive it?
+        </legend>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {methods.map((m) => (
+            <label
+              key={m}
+              className={`cursor-pointer rounded-2xl border-2 p-5 transition-colors ${
+                method === m
+                  ? "border-sage-deep bg-parchment"
+                  : "border-sage/30 bg-parchment/50 hover:border-sage/60"
+              }`}
+            >
+              <input
+                type="radio"
+                name="deliveryMethod"
+                value={m}
+                checked={method === m}
+                onChange={() => setMethod(m)}
+                className="sr-only"
+              />
+              <span className="block font-serif text-xl font-semibold text-sage-dark">
+                {DELIVERY_LABELS[m]}
+              </span>
+              <span className="mt-1 block text-sm text-ink-soft">
+                {METHOD_NOTES[m]}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="mb-4 font-serif text-2xl font-semibold text-sage-dark">
+          3. Your details
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -167,7 +214,7 @@ export function CheckoutForm({
 
       <fieldset>
         <legend className="mb-4 font-serif text-2xl font-semibold text-sage-dark">
-          3. Shipping address
+          {method === "pickup" ? "4. Your address" : "4. Shipping address"}
         </legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -218,7 +265,12 @@ export function CheckoutForm({
             </select>
           </div>
         </div>
-        {shipping !== null ? (
+        {method === "pickup" ? (
+          <p className="mt-3 text-sm text-ink-soft">
+            Pick up is free. After payment, a sales representative will reach
+            out to you shortly to arrange your collection.
+          </p>
+        ) : feesOn && shipping !== null ? (
           <p
             role="status"
             className="mt-3 rounded-lg bg-sage/15 p-3 text-sm text-sage-dark ring-1 ring-sage/30"
@@ -226,9 +278,13 @@ export function CheckoutForm({
             Shipping fee for {state}: <strong>{naira(shipping)}</strong>. It has
             been added to your total below.
           </p>
-        ) : (
+        ) : feesOn ? (
           <p className="mt-3 text-sm text-ink-soft">
             Delivery within Nigeria. Choose your state to see its shipping fee.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-ink-soft">
+            Delivery within Nigeria. No shipping fee is added at checkout.
           </p>
         )}
       </fieldset>
@@ -245,8 +301,22 @@ export function CheckoutForm({
             <dd>{naira(unit * quantity)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-ink-soft">Shipping{state ? ` (${state})` : ""}</dt>
-            <dd>{shipping !== null ? naira(shipping) : "Select a state"}</dd>
+            <dt className="text-ink-soft">Delivery</dt>
+            <dd>{DELIVERY_LABELS[method]}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-ink-soft">
+              {method === "pickup"
+                ? "Pick up"
+                : `Shipping${state ? ` (${state})` : ""}`}
+            </dt>
+            <dd>
+              {method === "pickup" || !feesOn
+                ? "No fee"
+                : shipping !== null
+                  ? naira(shipping)
+                  : "Select a state"}
+            </dd>
           </div>
           <div className="flex justify-between border-t border-sage/30 pt-3 text-base font-semibold">
             <dt>Total</dt>
@@ -260,12 +330,12 @@ export function CheckoutForm({
         )}
         <button
           type="submit"
-          disabled={busy || shipping === null}
+          disabled={busy || !state}
           className="mt-6 w-full rounded-full bg-sage-dark px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy
             ? "Opening secure payment…"
-            : shipping === null
+            : !state
               ? "Choose your state to continue"
               : `Pay ${naira(total)} with Paystack`}
         </button>

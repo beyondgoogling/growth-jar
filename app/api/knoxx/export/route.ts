@@ -7,9 +7,16 @@ export async function GET(request: Request) {
   if (!rateLimit(`export:${clientIp(request.headers)}`, 10, 60_000))
     return new Response("Too many exports. Wait a minute.", { status: 429 });
 
-  const format = new URL(request.url).searchParams.get("format");
-  const orders = await getAllOrders();
+  const url = new URL(request.url);
+  const format = url.searchParams.get("format");
+  const deliveryParam = url.searchParams.get("delivery");
+  const delivery =
+    deliveryParam === "pickup" || deliveryParam === "delivery"
+      ? deliveryParam
+      : undefined;
+  const orders = await getAllOrders(delivery);
   const stamp = new Date().toISOString().slice(0, 10);
+  const name = `growth-jar-orders${delivery ? `-${delivery}` : ""}-${stamp}`;
 
   if (format === "xlsx") {
     const buffer = await ordersToXlsx(orders);
@@ -17,7 +24,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="growth-jar-orders-${stamp}.xlsx"`,
+        "Content-Disposition": `attachment; filename="${name}.xlsx"`,
         "Cache-Control": "no-store",
       },
     });
@@ -28,7 +35,7 @@ export async function GET(request: Request) {
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="growth-jar-orders-${stamp}.pdf"`,
+        "Content-Disposition": `attachment; filename="${name}.pdf"`,
         "Cache-Control": "no-store",
       },
     });

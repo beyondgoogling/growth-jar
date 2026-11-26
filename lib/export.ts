@@ -2,11 +2,20 @@ import "server-only";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import { getDb, type Order } from "./db";
-import { formatDate, naira, PACKAGE_LABELS } from "./format";
+import { formatDate, naira, DELIVERY_LABELS, PACKAGE_LABELS } from "./format";
 
-export async function getAllOrders(): Promise<Order[]> {
+export async function getAllOrders(
+  delivery?: "pickup" | "delivery"
+): Promise<Order[]> {
   const db = await getDb();
-  const rs = await db.execute("SELECT * FROM orders ORDER BY id DESC");
+  const rs = await db.execute(
+    delivery
+      ? {
+          sql: "SELECT * FROM orders WHERE delivery_method = ? ORDER BY id DESC",
+          args: [delivery],
+        }
+      : "SELECT * FROM orders ORDER BY id DESC"
+  );
   return rs.rows as unknown as Order[];
 }
 
@@ -19,6 +28,7 @@ const COLUMNS = [
   "Address",
   "City",
   "State",
+  "Delivery",
   "Package",
   "Qty",
   "Unit price",
@@ -40,6 +50,7 @@ function orderRow(o: Order): (string | number)[] {
     o.address_line,
     o.city,
     o.state,
+    DELIVERY_LABELS[o.delivery_method],
     PACKAGE_LABELS[o.package],
     o.quantity,
     o.unit_price_kobo / 100,
@@ -65,12 +76,12 @@ export async function ordersToXlsx(orders: Order[]): Promise<Buffer> {
   };
   for (const o of orders) ws.addRow(orderRow(o));
   ws.columns.forEach((col, i) => {
-    col.width = [14, 22, 24, 30, 16, 36, 16, 16, 34, 6, 12, 12, 12, 10, 22, 12, 40][i] ?? 16;
+    col.width = [14, 22, 24, 30, 16, 36, 16, 16, 14, 34, 6, 12, 12, 12, 10, 22, 12, 40][i] ?? 16;
   });
-  ws.getColumn(11).numFmt = "#,##0.00";
   ws.getColumn(12).numFmt = "#,##0.00";
   ws.getColumn(13).numFmt = "#,##0.00";
-  ws.autoFilter = { from: "A1", to: "Q1" };
+  ws.getColumn(14).numFmt = "#,##0.00";
+  ws.autoFilter = { from: "A1", to: "R1" };
   ws.views = [{ state: "frozen", ySplit: 1 }];
   const paid = orders.filter((o) => o.payment_status === "paid");
   const summary = wb.addWorksheet("Summary");
@@ -116,10 +127,11 @@ export function ordersToPdf(orders: Order[]): Promise<Buffer> {
       { label: "Date", w: 92 },
       { label: "Customer", w: 120 },
       { label: "Package", w: 130 },
+      { label: "Delivery", w: 60 },
       { label: "Total", w: 70 },
       { label: "Payment", w: 55 },
       { label: "Fulfillment", w: 65 },
-      { label: "Ship to", w: 158 },
+      { label: "Ship to", w: 98 },
     ];
     const startX = 36;
     const rowH = 26;
@@ -150,6 +162,7 @@ export function ordersToPdf(orders: Order[]): Promise<Buffer> {
         formatDate(o.created_at),
         `${o.customer_name}\n${o.email}`,
         `${PACKAGE_LABELS[o.package]} x${o.quantity}`,
+        DELIVERY_LABELS[o.delivery_method],
         naira(o.total_kobo),
         o.payment_status,
         o.fulfillment_status,

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { can } from "@/lib/admins";
 import { getDb, getOrderByReference } from "@/lib/db";
-import { formatDate, naira, PACKAGE_LABELS } from "@/lib/format";
+import { formatDate, naira, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
 import { saveNotesAction, updateFulfillmentAction } from "../../actions";
 import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "../../ui";
 import { btnPrimary, inputClass, labelClass } from "../../styles";
@@ -76,8 +76,13 @@ async function OrderDetail({
           </dl>
           <div className="mt-6 rounded-xl bg-cream p-5">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-deep">
-              Ship to
+              {order.delivery_method === "pickup" ? "Pickup address" : "Ship to"}
             </h3>
+            {order.delivery_method === "pickup" && (
+              <p className="mt-2 rounded-lg bg-gold/15 p-2 text-xs text-sage-dark ring-1 ring-gold/40">
+                Customer collects in person — reach out to arrange pick up.
+              </p>
+            )}
             <p className="mt-2 text-sm leading-relaxed">
               {order.address_line}
               <br />
@@ -104,8 +109,16 @@ async function OrderDetail({
           <h2 className="font-serif text-xl font-semibold text-sage-dark">Order</h2>
           <dl className="mt-4 space-y-2.5 text-sm">
             <Row k="Package" v={`${PACKAGE_LABELS[order.package]} × ${order.quantity}`} />
+            <Row k="Delivery" v={DELIVERY_LABELS[order.delivery_method]} />
             <Row k="Unit price" v={naira(order.unit_price_kobo)} />
-            <Row k="Shipping" v={naira(order.shipping_kobo)} />
+            <Row
+              k="Shipping"
+              v={
+                order.delivery_method === "pickup"
+                  ? "No fee (pick up)"
+                  : naira(order.shipping_kobo)
+              }
+            />
             <div className="flex justify-between gap-4 border-t border-sage/15 pt-3">
               <dt className="font-semibold">Total</dt>
               <dd className="font-serif text-xl font-semibold text-gold">

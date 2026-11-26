@@ -30,6 +30,8 @@ async function createDb(): Promise<Client> {
       city TEXT NOT NULL,
       state TEXT NOT NULL,
       country TEXT NOT NULL DEFAULT 'Nigeria',
+      delivery_method TEXT NOT NULL DEFAULT 'delivery'
+        CHECK (delivery_method IN ('pickup','delivery')),
       payment_status TEXT NOT NULL DEFAULT 'pending'
         CHECK (payment_status IN ('pending','paid','failed')),
       paid_at TEXT,
@@ -89,6 +91,11 @@ async function createDb(): Promise<Client> {
   if (!orderCols.rows.some((r) => r.name === "paystack_ref")) {
     await db.execute("ALTER TABLE orders ADD COLUMN paystack_ref TEXT");
   }
+  if (!orderCols.rows.some((r) => r.name === "delivery_method")) {
+    await db.execute(
+      "ALTER TABLE orders ADD COLUMN delivery_method TEXT NOT NULL DEFAULT 'delivery' CHECK (delivery_method IN ('pickup','delivery'))"
+    );
+  }
   await db.batch(
     [
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('journal_price_kobo', '1500000')",
@@ -98,6 +105,9 @@ async function createDb(): Promise<Client> {
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('shipping_fee_kobo', '300000')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email', '')",
       "INSERT OR IGNORE INTO settings (key, value) VALUES ('notify_email_2', '')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('shipping_fees_enabled', '1')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('pickup_enabled', '1')",
+      "INSERT OR IGNORE INTO settings (key, value) VALUES ('delivery_enabled', '1')",
     ],
     "write"
   );
@@ -137,6 +147,7 @@ export type Order = {
   city: string;
   state: string;
   country: string;
+  delivery_method: "pickup" | "delivery";
   payment_status: "pending" | "paid" | "failed";
   paid_at: string | null;
   fulfillment_status: "unfulfilled" | "shipped" | "delivered" | "cancelled";
@@ -150,6 +161,9 @@ export type Settings = {
   completePriceKobo: number;
   journalPriceUsdCents: number;
   completePriceUsdCents: number;
+  shippingFeesEnabled: boolean;
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -163,10 +177,40 @@ export async function getSettings(): Promise<Settings> {
     completePriceKobo: map.complete_price_kobo,
     journalPriceUsdCents: map.journal_price_usd_cents,
     completePriceUsdCents: map.complete_price_usd_cents,
+    shippingFeesEnabled: map.shipping_fees_enabled === 1,
+    pickupEnabled: map.pickup_enabled === 1,
+    deliveryEnabled: map.delivery_enabled === 1,
   };
 }
 
-export async function updateSettings(s: Settings) {
+export type DeliveryOptions = {
+  shippingFeesEnabled: boolean;
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
+};
+
+export async function updateDeliveryOptions(o: DeliveryOptions) {
+  const db = await getDb();
+  await db.batch(
+    [
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [o.shippingFeesEnabled ? "1" : "0", "shipping_fees_enabled"],
+      },
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [o.pickupEnabled ? "1" : "0", "pickup_enabled"],
+      },
+      {
+        sql: "UPDATE settings SET value = ? WHERE key = ?",
+        args: [o.deliveryEnabled ? "1" : "0", "delivery_enabled"],
+      },
+    ],
+    "write"
+  );
+}
+
+export async function updateSettings(s: Omit<Settings, keyof DeliveryOptions>) {
   const db = await getDb();
   await db.batch(
     [

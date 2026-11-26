@@ -5,6 +5,7 @@ import { visitorCurrency } from "@/lib/currency";
 import { sendNewOrderPendingAlert } from "@/lib/email";
 import { initializeTransaction, paystackConfigured } from "@/lib/paystack";
 import { validateCheckout } from "@/lib/validation";
+import { DELIVERY_LABELS } from "@/lib/format";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
@@ -49,11 +50,22 @@ export async function POST(request: Request) {
     );
 
   const settings = await getSettings();
+  if (
+    (input.deliveryMethod === "pickup" && !settings.pickupEnabled) ||
+    (input.deliveryMethod === "delivery" && !settings.deliveryEnabled)
+  )
+    return Response.json(
+      { error: "That delivery option is not available right now." },
+      { status: 400 }
+    );
   const unitPrice =
     input.package === "journal"
       ? settings.journalPriceKobo
       : settings.completePriceKobo;
-  const shipping = (await getStateShippingFees())[input.state].kobo;
+  const shipping =
+    input.deliveryMethod === "delivery" && settings.shippingFeesEnabled
+      ? (await getStateShippingFees())[input.state].kobo
+      : 0;
   const total = unitPrice * input.quantity + shipping;
   const reference = `GJ-${randomBytes(6).toString("hex").toUpperCase()}`;
 
@@ -61,8 +73,8 @@ export async function POST(request: Request) {
   const inserted = await db.execute({
     sql: `INSERT INTO orders
         (reference, package, quantity, unit_price_kobo, shipping_kobo, total_kobo,
-         customer_name, email, phone, address_line, city, state, paystack_ref)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         customer_name, email, phone, address_line, city, state, delivery_method, paystack_ref)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       reference,
       input.package,
@@ -76,11 +88,12 @@ export async function POST(request: Request) {
       input.addressLine,
       input.city,
       input.state,
+      input.deliveryMethod,
       reference,
     ],
   });
   const orderId = Number(inserted.lastInsertRowid);
-  await logEvent(orderId, "Order created");
+  await logEvent(orderId, `Order created (${DELIVERY_LABELS[input.deliveryMethod]})`);
   after(async () => {
     const order = await getOrderByReference(reference);
     if (order) await sendNewOrderPendingAlert(order);

@@ -2,6 +2,7 @@ import { NIGERIAN_STATES } from "./nigeria";
 
 export type CheckoutInput = {
   package: "journal" | "complete";
+  deliveryMethod: "pickup" | "delivery";
   quantity: number;
   customerName: string;
   email: string;
@@ -13,7 +14,10 @@ export type CheckoutInput = {
 
 type FieldRule = { max: number; min?: number; pattern?: RegExp; label: string };
 
-const rules: Record<keyof Omit<CheckoutInput, "package" | "quantity">, FieldRule> = {
+const rules: Record<
+  keyof Omit<CheckoutInput, "package" | "quantity" | "deliveryMethod">,
+  FieldRule
+> = {
   customerName: { max: 100, min: 2, label: "Full name" },
   email: {
     max: 254,
@@ -39,6 +43,9 @@ export function validateCheckout(
 
   if (b.package !== "journal" && b.package !== "complete")
     return { ok: false, error: "Please choose a package." };
+
+  if (b.deliveryMethod !== "pickup" && b.deliveryMethod !== "delivery")
+    return { ok: false, error: "Please choose pick up or home delivery." };
 
   const quantity = Number(b.quantity);
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10)
@@ -66,6 +73,7 @@ export function validateCheckout(
     ok: true,
     value: {
       package: b.package,
+      deliveryMethod: b.deliveryMethod,
       quantity,
       customerName: out.customerName,
       email: out.email,

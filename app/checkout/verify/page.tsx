@@ -73,11 +73,17 @@ async function VerifyResult({
       <Card
         tone="success"
         title="Thank you — your pre-order is confirmed!"
-        body={`We've received your payment of ${naira(order.total_kobo)} for ${
-          PACKAGE_LABELS[order.package]
-        } × ${order.quantity}. Your Growth Jar will ship to ${order.address_line}, ${
-          order.city
-        }, ${order.state} after the official launch on 12 December 2026. Keep your order reference safe.`}
+        body={
+          order.delivery_method === "pickup"
+            ? `We've received your payment of ${naira(order.total_kobo)} for ${
+                PACKAGE_LABELS[order.package]
+              } × ${order.quantity}. You chose pick up — a sales representative will reach out to you shortly to help arrange your collection. Keep your order reference safe.`
+            : `We've received your payment of ${naira(order.total_kobo)} for ${
+                PACKAGE_LABELS[order.package]
+              } × ${order.quantity}. Your Growth Jar will ship to ${order.address_line}, ${
+                order.city
+              }, ${order.state} after the official launch on 12 December 2026. Keep your order reference safe.`
+        }
         reference={order.reference}
       />
     );

@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { getNotifyEmails, logAdminEvent, logEvent, type Order } from "./db";
-import { naira, PACKAGE_LABELS } from "./format";
+import { naira, DELIVERY_LABELS, PACKAGE_LABELS } from "./format";
 
 export function emailConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -56,7 +56,8 @@ function orderTable(order: Order): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;background:#f6f2ea;border-radius:12px;padding:8px 16px;">
     ${row("Order reference", escapeHtml(order.reference))}
     ${row("Package", `${PACKAGE_LABELS[order.package]} × ${order.quantity}`)}
-    ${row("Shipping", naira(order.shipping_kobo))}
+    ${row("Delivery", DELIVERY_LABELS[order.delivery_method])}
+    ${row("Shipping", order.delivery_method === "pickup" ? "No fee (pick up)" : naira(order.shipping_kobo))}
     ${row("Total", naira(order.total_kobo))}
   </table>`;
 }
@@ -74,10 +75,18 @@ export async function sendOrderConfirmation(order: Order): Promise<boolean> {
       layout(
         "Thank you — your pre-order is confirmed!",
         `<p>Hi ${escapeHtml(order.customer_name)},</p>
-         <p>We've received your payment. Your Growth Jar Experience is reserved and will ship to you after the official launch on <strong>12 December 2026</strong>.</p>
+         ${
+           order.delivery_method === "pickup"
+             ? "<p>We've received your payment. You chose <strong>pick up</strong> — a sales representative will reach out to you shortly to help arrange your collection.</p>"
+             : "<p>We've received your payment. Your Growth Jar Experience is reserved and will ship to you after the official launch on <strong>12 December 2026</strong>.</p>"
+         }
          ${orderTable(order)}
-         <p><strong>Shipping to:</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</p>
-         <p>We'll email you again the moment your order ships. Keep your order reference safe.</p>
+         <p><strong>${order.delivery_method === "pickup" ? "Your address:" : "Shipping to:"}</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</p>
+         ${
+           order.delivery_method === "pickup"
+             ? "<p>Keep your order reference safe — our representative will use it when they contact you.</p>"
+             : "<p>We'll email you again the moment your order ships. Keep your order reference safe.</p>"
+         }
          <p style="color:#a8842c;font-style:italic;">Don't just count your blessings. Document your becoming.</p>`
       )
     );
@@ -101,7 +110,7 @@ export async function sendAdminNewOrderAlert(order: Order): Promise<boolean> {
         "New paid order",
         `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) just paid for:</p>
          ${orderTable(order)}
-         <p><strong>Ship to:</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
+         <p><strong>${order.delivery_method === "pickup" ? "Pickup address:" : "Ship to:"}</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
          <p>Open the admin dashboard to manage this order.</p>`
       )
     );
@@ -149,7 +158,7 @@ export async function sendNewOrderPendingAlert(order: Order): Promise<boolean> {
         "New order — awaiting payment",
         `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) just started checkout:</p>
          ${orderTable(order)}
-         <p><strong>Ship to:</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
+         <p><strong>${order.delivery_method === "pickup" ? "Pickup address:" : "Ship to:"}</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
          <p>You'll get another email the moment the payment succeeds.</p>`
       )
     );

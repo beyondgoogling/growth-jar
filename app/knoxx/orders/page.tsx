@@ -3,40 +3,88 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { can } from "@/lib/admins";
 import { getDb, type Order } from "@/lib/db";
-import { formatDate, naira, PACKAGE_LABELS } from "@/lib/format";
+import { formatDate, naira, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
 import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "../ui";
 import { btnOutline } from "../styles";
 import { DeleteOrderButton } from "./delete-order";
 
-export default function OrdersPage() {
+type Filter = "pickup" | "delivery";
+
+export default function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <Suspense fallback={<p className="p-10 text-ink-soft">Loading orders…</p>}>
-      <Orders />
+      <Orders searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Orders() {
+async function Orders({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const admin = await requireAdmin();
+  const params = await searchParams;
+  const filter: Filter | undefined =
+    params.delivery === "pickup" || params.delivery === "delivery"
+      ? params.delivery
+      : undefined;
   const db = await getDb();
   const orders = (
-    await db.execute("SELECT * FROM orders ORDER BY id DESC LIMIT 1000")
+    await db.execute(
+      filter
+        ? {
+            sql: "SELECT * FROM orders WHERE delivery_method = ? ORDER BY id DESC LIMIT 1000",
+            args: [filter],
+          }
+        : "SELECT * FROM orders ORDER BY id DESC LIMIT 1000"
+    )
   ).rows as unknown as Order[];
+  const counts = { pickup: 0, delivery: 0 };
+  const countRows = (
+    await db.execute(
+      "SELECT delivery_method, COUNT(*) AS n FROM orders GROUP BY delivery_method"
+    )
+  ).rows;
+  for (const r of countRows) counts[r.delivery_method as Filter] = Number(r.n);
+  const total = counts.pickup + counts.delivery;
   const canDelete = can(admin.role, "orders.delete");
+  const exportQuery = filter ? `&delivery=${filter}` : "";
+  const pills = [
+    { href: "/knoxx/orders", label: `All (${total})`, active: !filter },
+    {
+      href: "/knoxx/orders?delivery=pickup",
+      label: `Pick up (${counts.pickup})`,
+      active: filter === "pickup",
+    },
+    {
+      href: "/knoxx/orders?delivery=delivery",
+      label: `Home delivery (${counts.delivery})`,
+      active: filter === "delivery",
+    },
+  ];
 
   return (
     <AdminShell
       admin={admin}
       active="orders"
       title="Orders"
-      subtitle={`${orders.length} order${orders.length === 1 ? "" : "s"} on record.`}
+      subtitle={
+        filter
+          ? `${orders.length} of ${total} orders — ${DELIVERY_LABELS[filter].toLowerCase()} only.`
+          : `${total} order${total === 1 ? "" : "s"} on record.`
+      }
       actions={
         can(admin.role, "orders.export") ? (
           <>
-            <a href="/api/knoxx/export?format=xlsx" className={btnOutline}>
+            <a href={`/api/knoxx/export?format=xlsx${exportQuery}`} className={btnOutline}>
               ⬇ Export Excel
             </a>
-            <a href="/api/knoxx/export?format=pdf" className={btnOutline}>
+            <a href={`/api/knoxx/export?format=pdf${exportQuery}`} className={btnOutline}>
               ⬇ Export PDF
             </a>
           </>
@@ -44,19 +92,40 @@ async function Orders() {
       }
     >
       <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-sage/15 bg-cream/60 px-6 py-4">
+          <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.15em] text-sage-deep">
+            Show
+          </span>
+          {pills.map((p) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              className={
+                p.active
+                  ? "rounded-full bg-sage-dark px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-parchment"
+                  : "rounded-full border border-sage/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-sage-dark transition-colors hover:border-gold hover:text-gold"
+              }
+            >
+              {p.label}
+            </Link>
+          ))}
+        </div>
         {orders.length === 0 ? (
           <p className="px-6 py-14 text-center text-ink-soft">
-            No orders yet. Share your sales page — orders will land here automatically.
+            {filter
+              ? `No ${DELIVERY_LABELS[filter].toLowerCase()} orders yet.`
+              : "No orders yet. Share your sales page — orders will land here automatically."}
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead>
                 <tr className="border-b border-sage/15 bg-cream/60 text-[11px] uppercase tracking-[0.15em] text-sage-deep">
                   <th className="px-6 py-3.5">Reference</th>
                   <th className="px-4 py-3.5">Date</th>
                   <th className="px-4 py-3.5">Customer</th>
                   <th className="px-4 py-3.5">Package</th>
+                  <th className="px-4 py-3.5">Delivery</th>
                   <th className="px-4 py-3.5">Total</th>
                   <th className="px-4 py-3.5">Payment</th>
                   <th className="px-4 py-3.5">Fulfillment</th>
@@ -83,6 +152,9 @@ async function Orders() {
                     </td>
                     <td className="px-4 py-3.5 text-ink-soft">
                       {PACKAGE_LABELS[o.package]} × {o.quantity}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-ink-soft">
+                      {DELIVERY_LABELS[o.delivery_method]}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-semibold">
                       {naira(o.total_kobo)}

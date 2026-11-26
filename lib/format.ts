@@ -21,6 +21,11 @@ export function money(smallestUnit: number, currency: Currency): string {
   return currency === "NGN" ? naira(smallestUnit) : usd(smallestUnit);
 }
 
+export const DELIVERY_LABELS = {
+  pickup: "Pick up",
+  delivery: "Home delivery",
+} as const;
+
 export const PACKAGE_LABELS = {
   journal: "Journal only",
   complete: "Complete Experience (journal + jar)",
