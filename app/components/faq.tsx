@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     q: "Does the journal come with a jar?",
-    a: "Details of the journal-only and complete experience packages will be shared at launch.",
+    a: "Only the Complete Experience package comes with a jar.",
   },
   {
     q: "Can I gift it to someone?",
