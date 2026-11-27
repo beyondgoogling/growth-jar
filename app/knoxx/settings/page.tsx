@@ -61,17 +61,18 @@ async function Settings() {
           </h2>
           {!s.shippingFeesEnabled && (
             <p className="mt-2 rounded-xl bg-gold/15 p-3 text-sm text-sage-dark ring-1 ring-gold/40">
-              Shipping fees are currently switched OFF: customers see the
-              states without prices and no shipping fee is added at checkout.
-              The amounts below are kept for when you switch fees back on.
+              Shipping fees are currently switched OFF: home delivery customers
+              see only state names, nothing is added at checkout, and the fee is
+              arranged with them afterwards. Pick up never shows a fee. The
+              amounts below are kept for when you switch fees back on.
             </p>
           )}
           <p className="mt-1 text-sm text-ink-soft">
             Set what delivery costs for each state: naira in the left box, US
-            dollars in the right. Customers in Nigeria see the fee as soon as
-            they pick their state at checkout, and it is added to their total.
-            International visitors order on WhatsApp — use the dollar figures
-            when quoting delivery in chat.
+            dollars in the right. With fees switched on, home delivery customers
+            see each fee in the state list at checkout and it is added to their
+            total. International visitors order on WhatsApp — use the dollar
+            figures when quoting delivery in chat.
           </p>
           <StateFeesForm
             initialFees={Object.fromEntries(

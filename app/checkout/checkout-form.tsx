@@ -259,7 +259,9 @@ export function CheckoutForm({
               <option value="">Choose your state…</option>
               {NIGERIAN_STATES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {method === "delivery" && feesOn && stateFees[s]
+                    ? `${s} — ${naira(stateFees[s].kobo)}`
+                    : s}
                 </option>
               ))}
             </select>
@@ -284,7 +286,8 @@ export function CheckoutForm({
           </p>
         ) : (
           <p className="mt-3 text-sm text-ink-soft">
-            Delivery within Nigeria. No shipping fee is added at checkout.
+            Delivery within Nigeria. Your shipping fee will be arranged with you
+            after checkout — no fee is added to your total today.
           </p>
         )}
       </fieldset>
@@ -311,11 +314,13 @@ export function CheckoutForm({
                 : `Shipping${state ? ` (${state})` : ""}`}
             </dt>
             <dd>
-              {method === "pickup" || !feesOn
+              {method === "pickup"
                 ? "No fee"
-                : shipping !== null
-                  ? naira(shipping)
-                  : "Select a state"}
+                : !feesOn
+                  ? "Arranged later"
+                  : shipping !== null
+                    ? naira(shipping)
+                    : "Select a state"}
             </dd>
           </div>
           <div className="flex justify-between border-t border-sage/30 pt-3 text-base font-semibold">

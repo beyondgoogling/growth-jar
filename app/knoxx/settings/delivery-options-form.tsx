@@ -18,7 +18,7 @@ const options = [
   {
     name: "shippingFeesEnabled",
     label: "Charge per-state shipping fees",
-    note: "On: each state's fee is shown at checkout and added to the total. Off: states are listed without prices and no shipping fee is added.",
+    note: "On: home delivery customers see each state's fee in the state list and it is added to their total. Off: they see only state names, nothing is added, and the fee is arranged with them after checkout. Pick up never shows or charges a fee.",
   },
 ] as const;
 
