@@ -27,7 +27,7 @@ export function Hero() {
         <div className="space-y-7 text-center md:text-left">
           <Eyebrow>52 weeks · One journal · One jar</Eyebrow>
           <h1 className="text-balance font-serif text-5xl font-medium leading-[1.05] text-sage-dark md:text-6xl">
-            Welcome to your Growth Jar Experience
+            Welcome to the Growth Jar Experience
           </h1>
           <p className="font-serif text-2xl italic text-gold">
             Don&apos;t just count your blessings. Document your becoming.
