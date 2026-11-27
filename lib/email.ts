@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { getNotifyEmails, logAdminEvent, logEvent, type Order } from "./db";
-import { naira, DELIVERY_LABELS, PACKAGE_LABELS } from "./format";
+import { naira, usd, money, DELIVERY_LABELS, PACKAGE_LABELS } from "./format";
 
 export function emailConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -64,9 +64,16 @@ function orderTable(order: Order): string {
     ${row("Order reference", escapeHtml(order.reference))}
     ${row("Package", `${PACKAGE_LABELS[order.package]} × ${order.quantity}`)}
     ${row("Delivery", DELIVERY_LABELS[order.delivery_method])}
-    ${row("Shipping", order.delivery_method === "pickup" ? "No fee (pick up)" : naira(order.shipping_kobo))}
-    ${row("Total", naira(order.total_kobo))}
+    ${row("Shipping", order.delivery_method === "pickup" ? "No fee (pick up)" : order.currency === "USD" ? "Arranged in chat" : naira(order.shipping_kobo))}
+    ${row("Total", money(order.total_kobo, order.currency === "USD" ? "USD" : "NGN"))}
   </table>`;
+}
+
+function addressHtml(order: Order): string {
+  return [order.address_line, order.city, order.state, order.country]
+    .filter(Boolean)
+    .map(escapeHtml)
+    .join(", ");
 }
 
 async function send(to: string, subject: string, html: string) {
@@ -88,7 +95,7 @@ export async function sendOrderConfirmation(order: Order): Promise<boolean> {
              : "<p>We've received your payment. Your Growth Jar Experience is reserved and will ship to you after the official launch on <strong>12 December 2026</strong>.</p>"
          }
          ${orderTable(order)}
-         <p><strong>${order.delivery_method === "pickup" ? "Your address:" : "Shipping to:"}</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</p>
+         <p><strong>${order.delivery_method === "pickup" ? "Your address:" : "Shipping to:"}</strong><br>${addressHtml(order)}</p>
          ${
            order.delivery_method === "pickup"
              ? "<p>Keep your order reference safe — our representative will use it when they contact you.</p>"
@@ -112,12 +119,12 @@ export async function sendAdminNewOrderAlert(order: Order): Promise<boolean> {
   try {
     await send(
       to,
-      `New paid order: ${order.reference} — ${naira(order.total_kobo)}`,
+      `New paid order: ${order.reference} — ${money(order.total_kobo, order.currency === "USD" ? "USD" : "NGN")}`,
       layout(
         "New paid order",
         `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) just paid for:</p>
          ${orderTable(order)}
-         <p><strong>${order.delivery_method === "pickup" ? "Pickup address:" : "Ship to:"}</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
+         <p><strong>${order.delivery_method === "pickup" ? "Pickup address:" : "Ship to:"}</strong><br>${addressHtml(order)}</p>
          <p>Open the admin dashboard to manage this order.</p>`
       )
     );
@@ -148,7 +155,7 @@ export async function sendShippedNotification(order: Order): Promise<boolean> {
              <p style="color:#a8842c;font-style:italic;">Write it. Tear it. Save it. One week at a time.</p>`
           : `<p>Hi ${escapeHtml(order.customer_name)},</p>
              <p>Good news — your order is on its way to:</p>
-             <p><strong>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}, ${escapeHtml(order.country)}</strong></p>
+             <p><strong>${addressHtml(order)}</strong></p>
              ${orderTable(order)}
              <p>Soon you'll be holding 52 weeks of becoming in your hands. We can't wait for you to begin.</p>
              <p style="color:#a8842c;font-style:italic;">Write it. Tear it. Save it. One week at a time.</p>`
@@ -179,7 +186,7 @@ export async function sendNewOrderPendingAlert(order: Order): Promise<boolean> {
         "New order — awaiting payment",
         `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) just started checkout:</p>
          ${orderTable(order)}
-         <p><strong>${order.delivery_method === "pickup" ? "Pickup address:" : "Ship to:"}</strong><br>${escapeHtml(order.address_line)}, ${escapeHtml(order.city)}, ${escapeHtml(order.state)}</p>
+         <p><strong>${order.delivery_method === "pickup" ? "Pickup address:" : "Ship to:"}</strong><br>${addressHtml(order)}</p>
          <p>You'll get another email the moment the payment succeeds.</p>`
       )
     );
@@ -187,6 +194,30 @@ export async function sendNewOrderPendingAlert(order: Order): Promise<boolean> {
     return true;
   } catch {
     await logEvent(order.id, "New-order alert email failed to send");
+    return false;
+  }
+}
+
+export async function sendWhatsappOrderAlert(order: Order): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  const to = (await getNotifyEmails()).join(", ");
+  if (!to) return false;
+  try {
+    await send(
+      to,
+      `New international order: ${order.reference} — ${usd(order.total_kobo)} (WhatsApp)`,
+      layout(
+        "New international order — WhatsApp",
+        `<p><strong>${escapeHtml(order.customer_name)}</strong> (${escapeHtml(order.email)}, ${escapeHtml(order.phone)}) just saved an international pre-order and is on their way to your WhatsApp:</p>
+         ${orderTable(order)}
+         <p><strong>Ship to:</strong><br>${addressHtml(order)}</p>
+         <p>Payment and delivery are arranged personally in the chat. Once payment is confirmed, open this order in the dashboard and use <strong>Mark as paid</strong>.</p>`
+      )
+    );
+    await logEvent(order.id, `WhatsApp-order alert sent to ${to}`);
+    return true;
+  } catch {
+    await logEvent(order.id, "WhatsApp-order alert email failed to send");
     return false;
   }
 }

@@ -14,7 +14,7 @@ const labelClass =
 const steps = [
   {
     title: "Send your order",
-    body: "The chat opens with your package, quantity and total already written. Just press send.",
+    body: "We save your details, then open a chat with your order summary already written. Just press send.",
   },
   {
     title: "Confirm delivery",
@@ -29,24 +29,69 @@ const steps = [
 export function WhatsappCheckout({ settings }: { settings: Settings }) {
   const [pkg, setPkg] = useState<"journal" | "complete">("complete");
   const [quantity, setQuantity] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ reference: string; url: string } | null>(
+    null
+  );
 
   const prices = {
     journal: settings.journalPriceUsdCents,
     complete: settings.completePriceUsdCents,
   };
   const total = prices[pkg] * quantity;
-  const message = [
-    "Hello! I'd like to pre-order The Growth Jar Experience.",
-    "",
-    `Package: ${PACKAGE_LABELS[pkg]}`,
-    `Quantity: ${quantity}`,
-    `Order total: ${usd(total)} (USD)`,
-    "",
-    "I'm ordering from outside Nigeria. Please help me complete my order.",
-  ].join("\n");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (saving || saved) return;
+    setSaving(true);
+    setError(null);
+    const data = new FormData(e.currentTarget);
+    const details = {
+      package: pkg,
+      quantity,
+      customerName: String(data.get("customerName") ?? ""),
+      email: String(data.get("email") ?? ""),
+      phone: String(data.get("phone") ?? ""),
+      country: String(data.get("country") ?? ""),
+      city: String(data.get("city") ?? ""),
+      addressLine: String(data.get("addressLine") ?? ""),
+    };
+    try {
+      const res = await fetch("/api/checkout/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(details),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+      const message = [
+        "Hello! I'd like to pre-order The Growth Jar Experience.",
+        "",
+        `Order reference: ${json.reference}`,
+        `Name: ${details.customerName}`,
+        `Package: ${PACKAGE_LABELS[pkg]}`,
+        `Quantity: ${quantity}`,
+        `Order total: ${usd(total)} (USD)`,
+        `Deliver to: ${details.city}, ${details.country}`,
+        "",
+        "I'm ordering from outside Nigeria. Please help me complete my order.",
+      ].join("\n");
+      const url = whatsappUrl(message);
+      setSaved({ reference: json.reference, url });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      setError("Could not save your order. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
-    <div className="mt-10 space-y-10">
+    <form onSubmit={handleSubmit} className="mt-10 space-y-10">
       <p
         role="status"
         className="rounded-lg bg-sage/15 p-3 text-sm text-sage-dark ring-1 ring-sage/30"
@@ -56,7 +101,7 @@ export function WhatsappCheckout({ settings }: { settings: Settings }) {
         WhatsApp.
       </p>
 
-      <fieldset>
+      <fieldset disabled={!!saved}>
         <legend className="mb-4 font-serif text-2xl font-semibold text-sage-dark">
           1. Choose your package
         </legend>
@@ -106,9 +151,113 @@ export function WhatsappCheckout({ settings }: { settings: Settings }) {
         </div>
       </fieldset>
 
+      <fieldset disabled={!!saved}>
+        <legend className="mb-4 font-serif text-2xl font-semibold text-sage-dark">
+          2. Your details
+        </legend>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label htmlFor="customerName" className={labelClass}>
+              Full name
+            </label>
+            <input
+              id="customerName"
+              name="customerName"
+              required
+              minLength={2}
+              maxLength={100}
+              autoComplete="name"
+              placeholder="Your full name"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className={labelClass}>
+              Email address
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              maxLength={254}
+              autoComplete="email"
+              placeholder="you@example.com"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="phone" className={labelClass}>
+              WhatsApp number
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              required
+              maxLength={20}
+              pattern="\+?[0-9\s-]{7,20}"
+              autoComplete="tel"
+              placeholder="+44 7123 456789"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="country" className={labelClass}>
+              Country
+            </label>
+            <input
+              id="country"
+              name="country"
+              required
+              minLength={2}
+              maxLength={100}
+              autoComplete="country-name"
+              placeholder="e.g. United Kingdom"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="city" className={labelClass}>
+              City
+            </label>
+            <input
+              id="city"
+              name="city"
+              required
+              minLength={2}
+              maxLength={100}
+              autoComplete="address-level2"
+              placeholder="Your city"
+              className={inputClass}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="addressLine" className={labelClass}>
+              Delivery address
+            </label>
+            <input
+              id="addressLine"
+              name="addressLine"
+              required
+              minLength={5}
+              maxLength={300}
+              autoComplete="street-address"
+              placeholder="Street address, postal code"
+              className={inputClass}
+            />
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-ink-soft">
+          We save these details with your order so the creator can arrange
+          delivery to your country — you won&apos;t need to type them again in
+          the chat.
+        </p>
+      </fieldset>
+
       <div className="rounded-2xl border border-sage/30 bg-parchment p-6">
         <h2 className="font-serif text-2xl font-semibold text-sage-dark">
-          2. Your order
+          3. Your order
         </h2>
         <dl className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">
@@ -126,19 +275,55 @@ export function WhatsappCheckout({ settings }: { settings: Settings }) {
             <dd className="text-gold">{usd(total)}</dd>
           </div>
         </dl>
-        <a
-          href={whatsappUrl(message)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-6 flex w-full items-center justify-center gap-3 rounded-full bg-sage-dark px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold"
-        >
-          <WhatsAppIcon className="h-5 w-5 shrink-0" />
-          <span>Order on WhatsApp · {usd(total)}</span>
-        </a>
-        <p className="mt-3 text-center text-xs text-ink-soft">
-          Opens a WhatsApp chat with the creator. Your order details are typed
-          into the message for you — just press send.
-        </p>
+        {error && (
+          <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
+            {error}
+          </p>
+        )}
+        {saved ? (
+          <>
+            <p
+              role="status"
+              className="mt-6 rounded-lg bg-sage/15 p-3 text-sm text-sage-dark ring-1 ring-sage/30"
+            >
+              Your order is saved — reference{" "}
+              <span className="font-mono font-semibold">{saved.reference}</span>.
+              Keep it for your chat with the creator.
+            </p>
+            <a
+              href={saved.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 flex w-full items-center justify-center gap-3 rounded-full bg-sage-dark px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold"
+            >
+              <WhatsAppIcon className="h-5 w-5 shrink-0" />
+              <span>Open WhatsApp chat · {usd(total)}</span>
+            </a>
+            <p className="mt-3 text-center text-xs text-ink-soft">
+              The chat should have opened in a new tab. If it didn&apos;t, use
+              the button above — your order summary is typed into the message
+              for you.
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              type="submit"
+              disabled={saving}
+              className="mt-6 flex w-full items-center justify-center gap-3 rounded-full bg-sage-dark px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <WhatsAppIcon className="h-5 w-5 shrink-0" />
+              <span>
+                {saving ? "Saving your order…" : `Order on WhatsApp · ${usd(total)}`}
+              </span>
+            </button>
+            <p className="mt-3 text-center text-xs text-ink-soft">
+              We save your details first, then open a WhatsApp chat with the
+              creator. Your order summary is typed into the message for you —
+              just press send.
+            </p>
+          </>
+        )}
       </div>
 
       <div className="rounded-2xl border border-sage/30 bg-parchment/50 p-6">
@@ -170,6 +355,6 @@ export function WhatsappCheckout({ settings }: { settings: Settings }) {
           and delivery details with you in the chat.
         </p>
       </div>
-    </div>
+    </form>
   );
 }

@@ -12,6 +12,17 @@ export type CheckoutInput = {
   state: string;
 };
 
+export type InternationalCheckoutInput = {
+  package: "journal" | "complete";
+  quantity: number;
+  customerName: string;
+  email: string;
+  phone: string;
+  country: string;
+  city: string;
+  addressLine: string;
+};
+
 type FieldRule = { max: number; min?: number; pattern?: RegExp; label: string };
 
 const rules: Record<
@@ -81,6 +92,62 @@ export function validateCheckout(
       addressLine: out.addressLine,
       city: out.city,
       state: out.state,
+    },
+  };
+}
+
+export function validateInternationalCheckout(
+  body: unknown
+): { ok: true; value: InternationalCheckoutInput } | { ok: false; error: string } {
+  if (typeof body !== "object" || body === null)
+    return { ok: false, error: "Invalid request." };
+  const b = body as Record<string, unknown>;
+
+  if (b.package !== "journal" && b.package !== "complete")
+    return { ok: false, error: "Please choose a package." };
+
+  const quantity = Number(b.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10)
+    return { ok: false, error: "Quantity must be between 1 and 10." };
+
+  const intlRules: Record<
+    keyof Omit<InternationalCheckoutInput, "package" | "quantity">,
+    FieldRule
+  > = {
+    customerName: rules.customerName,
+    email: rules.email,
+    phone: rules.phone,
+    country: { max: 100, min: 2, label: "Country" },
+    city: rules.city,
+    addressLine: rules.addressLine,
+  };
+
+  const out: Record<string, string> = {};
+  for (const [key, rule] of Object.entries(intlRules)) {
+    const raw = b[key];
+    if (typeof raw !== "string")
+      return { ok: false, error: `${rule.label} is required.` };
+    const value = raw.trim();
+    if (value.length < (rule.min ?? 1))
+      return { ok: false, error: `${rule.label} is required.` };
+    if (value.length > rule.max)
+      return { ok: false, error: `${rule.label} is too long.` };
+    if (rule.pattern && !rule.pattern.test(value))
+      return { ok: false, error: `Please enter a valid ${rule.label.toLowerCase()}.` };
+    out[key] = value;
+  }
+
+  return {
+    ok: true,
+    value: {
+      package: b.package,
+      quantity,
+      customerName: out.customerName,
+      email: out.email,
+      phone: out.phone,
+      country: out.country,
+      city: out.city,
+      addressLine: out.addressLine,
     },
   };
 }

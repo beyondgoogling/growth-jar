@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { can } from "@/lib/admins";
 import { getDb, getOrderByReference } from "@/lib/db";
-import { formatDate, naira, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
-import { saveNotesAction, updateFulfillmentAction } from "../../actions";
+import { formatDate, money, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
+import { markWhatsappPaidAction, saveNotesAction, updateFulfillmentAction } from "../../actions";
 import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "../../ui";
 import { btnPrimary, inputClass, labelClass } from "../../styles";
 import { ShippedEmailButton } from "./shipped-button";
@@ -45,6 +45,7 @@ async function OrderDetail({
   const canNote = can(admin.role, "orders.notes");
   const canEmail = can(admin.role, "email.send");
   const canDelete = can(admin.role, "orders.delete");
+  const currency = order.currency === "USD" ? "USD" : "NGN";
 
   return (
     <AdminShell
@@ -86,7 +87,7 @@ async function OrderDetail({
             <p className="mt-2 text-sm leading-relaxed">
               {order.address_line}
               <br />
-              {order.city}, {order.state}
+              {[order.city, order.state].filter(Boolean).join(", ")}
               <br />
               {order.country}
             </p>
@@ -111,33 +112,56 @@ async function OrderDetail({
           <dl className="mt-4 space-y-2.5 text-sm">
             <Row k="Package" v={`${PACKAGE_LABELS[order.package]} × ${order.quantity}`} />
             <Row k="Delivery" v={DELIVERY_LABELS[order.delivery_method]} />
-            <Row k="Unit price" v={naira(order.unit_price_kobo)} />
+            <Row k="Unit price" v={money(order.unit_price_kobo, currency)} />
             <Row
               k="Shipping"
               v={
                 order.delivery_method === "pickup"
                   ? "No fee (pick up)"
-                  : naira(order.shipping_kobo)
+                  : currency === "USD"
+                    ? "Arranged in chat"
+                    : money(order.shipping_kobo, currency)
               }
             />
             <div className="flex justify-between gap-4 border-t border-sage/15 pt-3">
               <dt className="font-semibold">Total</dt>
               <dd className="font-serif text-xl font-semibold text-gold">
-                {naira(order.total_kobo)}
+                {money(order.total_kobo, currency)}
               </dd>
             </div>
             {order.paid_at && <Row k="Paid at" v={formatDate(order.paid_at)} />}
-            {(order.reminder_sent_at || order.payment_status === "pending") && (
-              <Row
-                k="Payment reminder"
-                v={
-                  order.reminder_sent_at
-                    ? `Sent ${formatDate(order.reminder_sent_at)}`
-                    : "Not sent yet"
-                }
-              />
-            )}
+            {currency === "NGN" &&
+              (order.reminder_sent_at || order.payment_status === "pending") && (
+                <Row
+                  k="Payment reminder"
+                  v={
+                    order.reminder_sent_at
+                      ? `Sent ${formatDate(order.reminder_sent_at)}`
+                      : "Not sent yet"
+                  }
+                />
+              )}
           </dl>
+
+          {currency === "USD" && order.payment_status !== "paid" && canFulfill && (
+            <form
+              action={markWhatsappPaidAction}
+              className="mt-6 rounded-xl bg-gold/10 p-4 ring-1 ring-gold/30"
+            >
+              <input type="hidden" name="reference" value={order.reference} />
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sage-deep">
+                WhatsApp payment
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                This international order is paid in the WhatsApp chat. Once you
+                confirm the money has arrived, mark it here — the customer gets
+                their confirmation email.
+              </p>
+              <button type="submit" className={`${btnPrimary} mt-3`}>
+                Mark as paid
+              </button>
+            </form>
+          )}
 
           {canFulfill ? (
             <form action={updateFulfillmentAction} className="mt-7">

@@ -22,12 +22,8 @@ export function Voices() {
         <div className="mx-auto max-w-3xl space-y-6 text-center">
           <Eyebrow>In their own words</Eyebrow>
           <h2 className="text-balance font-serif text-4xl font-medium text-sage-dark md:text-5xl">
-            Hear the heart behind the jar.
+            Hear what they have to say. Press Play
           </h2>
-          <p className="leading-relaxed text-ink-soft">
-            Two journeys, one jar. Hear what the experience has meant to
-            them. Press play.
-          </p>
         </div>
         <div className="mx-auto grid w-full max-w-3xl gap-12 md:grid-cols-2">
           {VOICES.map((voice) => (

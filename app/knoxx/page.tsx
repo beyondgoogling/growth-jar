@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { can } from "@/lib/admins";
 import { getDb, type Order } from "@/lib/db";
-import { formatDate, naira, PACKAGE_LABELS } from "@/lib/format";
+import { formatDate, money, naira, usd, PACKAGE_LABELS } from "@/lib/format";
 import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "./ui";
 import { btnOutline } from "./styles";
 
@@ -25,7 +25,12 @@ async function Dashboard() {
   const orders = (await db.execute("SELECT * FROM orders ORDER BY id DESC"))
     .rows as unknown as Order[];
   const paid = orders.filter((o) => o.payment_status === "paid");
-  const revenue = paid.reduce((s, o) => s + o.total_kobo, 0);
+  const revenueNgn = paid
+    .filter((o) => o.currency !== "USD")
+    .reduce((s, o) => s + o.total_kobo, 0);
+  const revenueUsd = paid
+    .filter((o) => o.currency === "USD")
+    .reduce((s, o) => s + o.total_kobo, 0);
   const toShip = paid.filter((o) => o.fulfillment_status === "unfulfilled").length;
   const pending = orders.filter((o) => o.payment_status === "pending").length;
   const recent = orders.slice(0, 8);
@@ -50,7 +55,10 @@ async function Dashboard() {
       }
     >
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Revenue (paid)" value={naira(revenue)} accent />
+        <Stat label="Revenue (paid)" value={naira(revenueNgn)} accent />
+        {revenueUsd > 0 && (
+          <Stat label="Revenue (USD, WhatsApp)" value={usd(revenueUsd)} accent />
+        )}
         <Stat label="Paid orders" value={String(paid.length)} />
         <Stat label="Awaiting shipment" value={String(toShip)} />
         <Stat label="Pending payment" value={String(pending)} />
@@ -103,7 +111,9 @@ async function Dashboard() {
                     <td className="px-4 py-3.5 text-ink-soft">
                       {PACKAGE_LABELS[o.package]} × {o.quantity}
                     </td>
-                    <td className="px-4 py-3.5 font-semibold">{naira(o.total_kobo)}</td>
+                    <td className="px-4 py-3.5 font-semibold">
+                      {money(o.total_kobo, o.currency === "USD" ? "USD" : "NGN")}
+                    </td>
                     <td className="px-4 py-3.5">
                       <PaymentBadge status={o.payment_status} />
                     </td>

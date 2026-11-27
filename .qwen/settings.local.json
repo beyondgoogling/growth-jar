@@ -57,7 +57,8 @@
       "Bash(mkdir -p \"/c/Users/Carolina/AppData/Local/Temp/gj-cdp3/profile\" && \"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --remote-debugging-port=9224 --user-data-dir=\"C:/Users/Carolina/AppData/Local/Temp/gj-cdp3/profile\" --no-first-run --no-default-browser-check --hide-scrollbars --window-size=1280,1600 about:blank > /tmp/gj-chrome3.log 2>&1 &\nsleep 4; curl -s -m 5 http://127.0.0.1:9224/json/version | head -3; node \"C:/Users/Carolina/AppData/Local/Temp/gj-cdp3/verify.mjs\")",
       "Bash(mkdir -p \"/c/Users/Carolina/AppData/Local/Temp/gj-cdp4/profile\" && \"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --remote-debugging-port=9225 --user-data-dir=\"C:/Users/Carolina/AppData/Local/Temp/gj-cdp4/profile\" --no-first-run --no-default-browser-check --hide-scrollbars --window-size=1400,1200 about:blank > /tmp/gj-chrome4.log 2>&1 &\nsleep 4; node \"C:/Users/Carolina/AppData/Local/Temp/gj-cdp4/verify.mjs\")",
       "Bash(ls \"/c/Program Files/Google/Chrome/Application/chrome.exe\" 2>/dev/null || ls \"/c/Program Files \\(x86\\)/Google/Chrome/Application/chrome.exe\" 2>/dev/null)",
-      "Read(//c/Program Files \\(x86\\)/Google/Chrome/Application/**)"
+      "Read(//c/Program Files \\(x86\\)/Google/Chrome/Application/**)",
+      "Bash(rm -rf \"$LOCALAPPDATA/Temp/gj-verify-wa\" && echo cleaned)"
     ]
   }
 }

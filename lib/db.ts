@@ -325,6 +325,7 @@ export async function getOrdersDueForReminder(): Promise<Order[]> {
   const rs = await db.execute(
     `SELECT * FROM orders
      WHERE payment_status = 'pending'
+       AND currency = 'NGN'
        AND reminder_sent_at IS NULL
        AND created_at <= datetime('now', '-24 hours')
      ORDER BY id LIMIT 50`
@@ -349,6 +350,19 @@ export async function markPaid(orderId: number): Promise<boolean> {
   });
   if (res.rowsAffected > 0) {
     await logEvent(orderId, "Payment confirmed via Paystack");
+    return true;
+  }
+  return false;
+}
+
+export async function markPaidManually(orderId: number, actorName: string): Promise<boolean> {
+  const db = await getDb();
+  const res = await db.execute({
+    sql: "UPDATE orders SET payment_status = 'paid', paid_at = datetime('now') WHERE id = ? AND payment_status != 'paid'",
+    args: [orderId],
+  });
+  if (res.rowsAffected > 0) {
+    await logEvent(orderId, `Payment marked as received (by ${actorName})`);
     return true;
   }
   return false;

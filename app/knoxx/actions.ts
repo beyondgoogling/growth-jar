@@ -24,6 +24,7 @@ import {
   getStateShippingFees,
   logAdminEvent,
   logEvent,
+  markPaidManually,
   updateDeliveryOptions,
   updateSettings,
   updateStateShippingFees,
@@ -31,7 +32,7 @@ import {
 } from "@/lib/db";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
 import { money, naira, usd } from "@/lib/format";
-import { notifyActivity, sendPasswordResetEmail, sendShippedNotification, sendTestEmail } from "@/lib/email";
+import { notifyActivity, sendOrderConfirmation, sendPasswordResetEmail, sendShippedNotification, sendTestEmail } from "@/lib/email";
 
 export async function loginAction(
   _prev: { error: string } | null,
@@ -299,6 +300,36 @@ export async function updateFulfillmentAction(formData: FormData) {
     })
   );
   revalidatePath("/knoxx");
+  revalidatePath(`/knoxx/orders/${reference}`);
+}
+
+export async function markWhatsappPaidAction(formData: FormData) {
+  const admin = await requirePermission("orders.fulfill");
+  const reference = String(formData.get("reference") ?? "");
+  const order = await getOrderByReference(reference);
+  if (!order || order.currency !== "USD" || order.payment_status === "paid") return;
+  const marked = await markPaidManually(order.id, admin.name);
+  if (!marked) return;
+  const total = usd(order.total_kobo);
+  await logAdminEvent(admin.name, `Marked WhatsApp order ${reference} as paid (${total})`);
+  after(async () => {
+    const fresh = await getOrderByReference(reference);
+    if (fresh) await sendOrderConfirmation(fresh);
+    await notifyActivity({
+      subject: `WhatsApp order paid: ${reference}`,
+      heading: "An international order was marked as paid",
+      details: [
+        ["Order", reference],
+        ["Customer", order.customer_name],
+        ["Total", total],
+        ["Marked by", admin.name],
+      ],
+      actorEmail: admin.email,
+      orderId: order.id,
+    });
+  });
+  revalidatePath("/knoxx");
+  revalidatePath("/knoxx/orders");
   revalidatePath(`/knoxx/orders/${reference}`);
 }
 

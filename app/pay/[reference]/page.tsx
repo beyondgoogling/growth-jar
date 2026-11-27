@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { getOrderByReference } from "@/lib/db";
-import { naira, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
+import { money, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
+import { whatsappUrl } from "@/lib/contact";
 import { ResumeButton } from "./resume-button";
 
 export const metadata = {
@@ -52,6 +53,8 @@ async function PayContent({
     );
   }
 
+  const currency = order.currency === "USD" ? "USD" : "NGN";
+
   if (order.payment_status === "paid") {
     return (
       <div className="mt-10 rounded-2xl border border-sage/30 bg-parchment p-8">
@@ -59,7 +62,7 @@ async function PayContent({
           This order is already confirmed
         </h1>
         <p className="mt-4 leading-relaxed text-ink-soft">
-          We&apos;ve received your payment of {naira(order.total_kobo)} for{" "}
+          We&apos;ve received your payment of {money(order.total_kobo, currency)} for{" "}
           {PACKAGE_LABELS[order.package]} × {order.quantity}.{" "}
           {order.delivery_method === "pickup"
             ? "You chose pick up — a sales representative will reach out to you shortly to help arrange your collection."
@@ -110,13 +113,15 @@ async function PayContent({
           <dd className="font-medium">
             {order.delivery_method === "pickup"
               ? "No fee (pick up)"
-              : naira(order.shipping_kobo)}
+              : currency === "USD"
+                ? "Arranged in chat"
+                : money(order.shipping_kobo, currency)}
           </dd>
         </div>
         <div className="flex justify-between gap-4 border-t border-sage/15 pt-3">
           <dt className="font-semibold">Total</dt>
           <dd className="font-serif text-xl font-semibold text-gold">
-            {naira(order.total_kobo)}
+            {money(order.total_kobo, currency)}
           </dd>
         </div>
       </dl>
@@ -127,7 +132,7 @@ async function PayContent({
         <p className="mt-2 text-sm leading-relaxed">
           {order.address_line}
           <br />
-          {order.city}, {order.state}
+          {[order.city, order.state].filter(Boolean).join(", ")}
           <br />
           {order.country}
         </p>
@@ -138,11 +143,32 @@ async function PayContent({
           {order.reference}
         </span>
       </p>
-      <ResumeButton reference={order.reference} />
-      <p className="mt-4 text-xs text-ink-soft">
-        Changed your mind? Simply close this page — nothing is charged until
-        you pay.
-      </p>
+      {currency === "USD" ? (
+        <>
+          <a
+            href={whatsappUrl(
+              `Hello! I'd like to continue my pre-order. Order reference: ${order.reference}`
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 block w-full rounded-full bg-sage-dark px-8 py-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-parchment transition-colors hover:bg-gold"
+          >
+            Continue on WhatsApp
+          </a>
+          <p className="mt-4 text-xs text-ink-soft">
+            This international order is completed personally with the creator
+            on WhatsApp — payment and delivery are arranged in the chat.
+          </p>
+        </>
+      ) : (
+        <>
+          <ResumeButton reference={order.reference} />
+          <p className="mt-4 text-xs text-ink-soft">
+            Changed your mind? Simply close this page — nothing is charged until
+            you pay.
+          </p>
+        </>
+      )}
     </div>
   );
 }

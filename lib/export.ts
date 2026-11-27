@@ -2,7 +2,7 @@ import "server-only";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import { getDb, type Order } from "./db";
-import { formatDate, naira, DELIVERY_LABELS, PACKAGE_LABELS } from "./format";
+import { formatDate, money, naira, usd, DELIVERY_LABELS, PACKAGE_LABELS } from "./format";
 
 export async function getAllOrders(
   delivery?: "pickup" | "delivery"
@@ -28,9 +28,11 @@ const COLUMNS = [
   "Address",
   "City",
   "State",
+  "Country",
   "Delivery",
   "Package",
   "Qty",
+  "Currency",
   "Unit price",
   "Shipping",
   "Total",
@@ -50,9 +52,11 @@ function orderRow(o: Order): (string | number)[] {
     o.address_line,
     o.city,
     o.state,
+    o.country,
     DELIVERY_LABELS[o.delivery_method],
     PACKAGE_LABELS[o.package],
     o.quantity,
+    o.currency,
     o.unit_price_kobo / 100,
     o.shipping_kobo / 100,
     o.total_kobo / 100,
@@ -76,20 +80,27 @@ export async function ordersToXlsx(orders: Order[]): Promise<Buffer> {
   };
   for (const o of orders) ws.addRow(orderRow(o));
   ws.columns.forEach((col, i) => {
-    col.width = [14, 22, 24, 30, 16, 36, 16, 16, 14, 34, 6, 12, 12, 12, 10, 22, 12, 40][i] ?? 16;
+    col.width = [14, 22, 24, 30, 16, 36, 16, 16, 16, 14, 34, 6, 10, 12, 12, 12, 10, 22, 12, 40][i] ?? 16;
   });
-  ws.getColumn(12).numFmt = "#,##0.00";
-  ws.getColumn(13).numFmt = "#,##0.00";
   ws.getColumn(14).numFmt = "#,##0.00";
-  ws.autoFilter = { from: "A1", to: "R1" };
+  ws.getColumn(15).numFmt = "#,##0.00";
+  ws.getColumn(16).numFmt = "#,##0.00";
+  ws.autoFilter = { from: "A1", to: "T1" };
   ws.views = [{ state: "frozen", ySplit: 1 }];
   const paid = orders.filter((o) => o.payment_status === "paid");
+  const revenueNgn = paid
+    .filter((o) => o.currency !== "USD")
+    .reduce((s, o) => s + o.total_kobo, 0);
+  const revenueUsd = paid
+    .filter((o) => o.currency === "USD")
+    .reduce((s, o) => s + o.total_kobo, 0);
   const summary = wb.addWorksheet("Summary");
   summary.addRow(["Metric", "Value"]);
   summary.getRow(1).font = { bold: true };
   summary.addRow(["Total orders", orders.length]);
   summary.addRow(["Paid orders", paid.length]);
-  summary.addRow(["Revenue (NGN)", paid.reduce((s, o) => s + o.total_kobo, 0) / 100]);
+  summary.addRow(["Revenue (NGN)", revenueNgn / 100]);
+  summary.addRow(["Revenue (USD)", revenueUsd / 100]);
   summary.addRow(["Exported at", formatDate(new Date().toISOString().slice(0, 19).replace("T", " "))]);
   summary.getColumn(1).width = 24;
   summary.getColumn(2).width = 28;
@@ -110,13 +121,18 @@ export function ordersToPdf(orders: Order[]): Promise<Buffer> {
     doc.on("error", reject);
 
     const paid = orders.filter((o) => o.payment_status === "paid");
-    const revenue = paid.reduce((s, o) => s + o.total_kobo, 0);
+    const revenueNgn = paid
+      .filter((o) => o.currency !== "USD")
+      .reduce((s, o) => s + o.total_kobo, 0);
+    const revenueUsd = paid
+      .filter((o) => o.currency === "USD")
+      .reduce((s, o) => s + o.total_kobo, 0);
 
     doc.rect(0, 0, doc.page.width, 70).fill("#414d38");
     doc.fillColor("#fbf9f4").fontSize(20).text("THE GROWTH JAR — ORDER RECORDS", 36, 26);
     doc.fillColor("#3a3f33").fontSize(10);
     doc.text(
-      `${orders.length} orders · ${paid.length} paid · Revenue ${naira(revenue)}`,
+      `${orders.length} orders · ${paid.length} paid · Revenue ${naira(revenueNgn)}${revenueUsd > 0 ? ` + ${usd(revenueUsd)}` : ""}`,
       36,
       84
     );
@@ -163,10 +179,10 @@ export function ordersToPdf(orders: Order[]): Promise<Buffer> {
         `${o.customer_name}\n${o.email}`,
         `${PACKAGE_LABELS[o.package]} x${o.quantity}`,
         DELIVERY_LABELS[o.delivery_method],
-        naira(o.total_kobo),
+        money(o.total_kobo, o.currency === "USD" ? "USD" : "NGN"),
         o.payment_status,
         o.fulfillment_status,
-        `${o.address_line}, ${o.city}, ${o.state}`,
+        [o.address_line, o.city, o.state, o.country].filter(Boolean).join(", "),
       ];
       let x = startX + 4;
       doc.fillColor("#3a3f33");

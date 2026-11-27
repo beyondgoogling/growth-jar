@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { can } from "@/lib/admins";
 import { getDb, type Order } from "@/lib/db";
-import { formatDate, naira, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
+import { formatDate, money, DELIVERY_LABELS, PACKAGE_LABELS } from "@/lib/format";
 import { AdminShell, Card, FulfillmentBadge, PaymentBadge } from "../ui";
 import { btnOutline } from "../styles";
 import { DeleteOrderButton } from "./delete-order";
@@ -157,7 +157,7 @@ async function Orders({
                       {DELIVERY_LABELS[o.delivery_method]}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3.5 font-semibold">
-                      {naira(o.total_kobo)}
+                      {money(o.total_kobo, o.currency === "USD" ? "USD" : "NGN")}
                     </td>
                     <td className="px-4 py-3.5">
                       <PaymentBadge status={o.payment_status} />

@@ -35,6 +35,14 @@ export async function POST(request: Request) {
       { error: "This order is already paid. Thank you!" },
       { status: 400 }
     );
+  if (order.currency !== "NGN")
+    return Response.json(
+      {
+        error:
+          "This order is completed on WhatsApp. Please continue in your chat with the creator.",
+      },
+      { status: 400 }
+    );
 
   if (!paystackConfigured())
     return Response.json(
