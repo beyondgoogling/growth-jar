@@ -33,7 +33,7 @@ export function Hero() {
             Don&apos;t just count your blessings. Document your becoming.
           </p>
           <p className="mx-auto max-w-md leading-relaxed text-ink-soft md:mx-0">
-            52 weeks worth remembering. A guided gratitude journal and jar
+            52 weeks of growth through gratitude. A guided gratitude journal and jar
             journey to help you slow down, reflect, appreciate your life, and
             preserve meaningful memories.
           </p>
