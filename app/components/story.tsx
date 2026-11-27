@@ -57,28 +57,61 @@ export function Story() {
         <div className="space-y-6">
           <Eyebrow>52 weeks of intentional reflection</Eyebrow>
           <h2 className="text-balance font-serif text-4xl font-medium leading-tight text-sage-dark md:text-5xl">
-            What if you could meet yourself from 52 weeks ago?
+            What if you could sit down with the person you were 52 weeks ago?
           </h2>
           <div className="space-y-4 leading-relaxed text-ink-soft">
             <p>
-              Imagine opening your jar filled with little folded notes. You
-              pick one. It&apos;s about something that once kept you awake at
-              night. You smile because it no longer worries you.
+              Imagine opening a jar filled with little notes from the past
+              year.
             </p>
             <p>
-              You open another. It&apos;s a small win you had completely
-              forgotten. Another one reminds you of someone who showed up for
-              you when you needed them the most. And another takes you back to
-              a moment you wish you could relive.
+              You unfold one and read about something that once kept you awake
+              at night. Something that felt overwhelming, impossible, or too
+              heavy to carry. And then you realize&hellip; you made it through.
+              What once felt like a mountain is now just a memory.
             </p>
             <p>
-              Suddenly, you&apos;re not just reading old notes. You&apos;re
-              seeing your life through the eyes of the person you used to be.
-              The things you hoped for. The moments you survived. The lessons
-              you learned. And the person you became along the way.
+              You pick another note. It&apos;s a small victory you had
+              forgotten all about. A prayer answered. A goal reached. A moment
+              that mattered more than you knew at the time.
+            </p>
+            <p>
+              Another note reminds you of someone who stood by your side when
+              you felt alone. Someone who showed up, encouraged you, or held
+              your hand through a difficult season.
+            </p>
+            <p>
+              Then you open one that takes your breath away. A beautiful
+              moment. A laugh. A hug. A memory you&apos;d give anything to
+              relive for just a few seconds.
+            </p>
+            <p>As you keep reading, something unexpected happens.</p>
+            <p>
+              You&apos;re no longer looking at pieces of paper. You&apos;re
+              looking at your life.
+            </p>
+            <p>
+              The hopes you carried. The tears you cried. The battles you
+              fought in silence. The blessings you almost missed. The strength
+              you didn&apos;t know you had.
             </p>
             <p className="font-serif text-xl italic text-sage-deep">
-              That&apos;s what 52 weeks of intentional reflection can give you.
+              And suddenly, you meet the person you used to be.
+            </p>
+            <p>
+              The version of you who was worried about the future, praying for
+              answers, and wondering how everything would work out.
+            </p>
+            <p className="font-medium text-ink">
+              If they could see you now, they would be so proud.
+            </p>
+            <p>
+              Because despite the setbacks, the heartbreaks, and the
+              uncertainties, you kept going.
+            </p>
+            <p>
+              And somehow, through it all, you became the person you were
+              meant to be.
             </p>
           </div>
         </div>
